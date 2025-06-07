@@ -1,15 +1,10 @@
 +++
 date = '2025-06-07T15:42:12+08:00'
 draft = false
-title = '从零搭建个人博客'
+title = '从零搭建个人博客：Hugo + GitHub Pages 全流程指南'
 tags = ["Memos", "教程"]
 summary = "从零搭建个人博客，全面讲解 Hugo 和 GitHub Pages 的部署全过程。"
-
 +++
-
-# 从零搭建个人博客：Hugo + GitHub Pages 全流程指南
-
-
 
 ## 1. 安装 Hugo（静态网站生成器）
 

@@ -6,8 +6,6 @@ tags = ["Memos", "经验"]
 summary = "一次通过 SSH 远程连接 Ubuntu 服务器训练模型时遇到的 PermissionError 报错，追踪发现是 /tmp 缓存目录空间占满导致多进程通信失败。详细记录诊断和解决过程。"
 +++
 
-# 解决训练中 PermissionError 报错：Ubuntu `/tmp` 缓存占满引发的多进程失败
-
 近期在通过 SSH 远程连接 Ubuntu 服务器运行深度学习训练脚本时，遇到了如下报错：
 
 ```text

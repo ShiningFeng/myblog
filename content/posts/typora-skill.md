@@ -1,13 +1,11 @@
 +++
 date = '2023-10-14T08:00:00+08:00'
 draft = false
-title = 'Typora 使用技巧：PicGo 图床配置、代码块默认语言、快捷键自定义等'
+title = 'Typora 使用技巧'
 summary = "本篇笔记整理了 Typora 使用过程中的常用技巧，包括如何配置 PicGo + Gitee 图床、更改默认代码语言、自定义快捷键，以及实现图片居中显示等，适用于提高 Markdown 写作效率的用户。"
 tags = ["Memos", "经验"]
 
 +++
-
-# Typora 使用技巧汇总
 
 本文总结了日常使用 Typora 中涉及的几个实用技巧，包括：
 
