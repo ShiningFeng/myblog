@@ -1,0 +1,41 @@
+baseURL = "http://localhost:1313/"
+languageCode = "zh-CN"
+title = "ShiningFeng's Blog"
+theme = "PaperModX"
+enableRobotsTXT = true
+
+[pagination]
+  pagerSize = 10
+
+[params]
+  author = "ShiningFeng"
+  ShowReadingTime = true
+  ShowPostNavLinks = true
+  ShowShareButtons = true
+  ShowBreadCrumbs = true
+  ShowCodeCopyButtons = true
+  ShowToc = true
+  TocOpen = true
+  defaultTheme = "auto"
+  TocSide = 'left'
+  mainSections = ["posts"]
+
+[menu]
+[[menu.main]]
+  name = "主页"
+  url = "/"
+  weight = 1
+
+[[menu.main]]
+  name = "归档"
+  url = "/archives"
+  weight = 2
+
+[[menu.main]]
+  name = "标签"
+  url = "/tags"
+  weight = 3
+
+[markup]
+  [markup.highlight]
+    noClasses = false

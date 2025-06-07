@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>经验 on ShiningFeng&#39;s Blog</title>
+    <link>http://localhost:1313/tags/%E7%BB%8F%E9%AA%8C/</link>
+    <description>Recent content in 经验 on ShiningFeng&#39;s Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-CN</language>
+    <lastBuildDate>Thu, 24 Oct 2024 08:00:00 +0800</lastBuildDate><atom:link href="http://localhost:1313/tags/%E7%BB%8F%E9%AA%8C/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>解决训练中 PermissionError 报错：Ubuntu /tmp 缓存空间占满引发的多进程失败</title>
+      <link>http://localhost:1313/posts/permissionerror/</link>
+      <pubDate>Thu, 24 Oct 2024 08:00:00 +0800</pubDate>
+      
+      <guid>http://localhost:1313/posts/permissionerror/</guid>
+      <description>一次通过 SSH 远程连接 Ubuntu 服务器训练模型时遇到的 PermissionError 报错，追踪发现是 /tmp 缓存目录空间占满导致多进程通信失败。详细记录诊断和解决过程。</description>
+      <content:encoded><![CDATA[<h1 id="解决训练中-permissionerror-报错ubuntu-tmp-缓存占满引发的多进程失败">解决训练中 PermissionError 报错：Ubuntu <code>/tmp</code> 缓存占满引发的多进程失败</h1>
+<p>近期在通过 SSH 远程连接 Ubuntu 服务器运行深度学习训练脚本时，遇到了如下报错：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">PermissionError: [Errno 13] Permission denied
+</span></span><span class="line"><span class="cl">...
+</span></span><span class="line"><span class="cl">self._listener = Listener(authkey=process.current_process().authkey)
+</span></span><span class="line"><span class="cl">...
+</span></span></code></pre></div><p>表面看似是多进程通信（如 multiprocessing、DataLoader）权限问题，但实际原因并非网络端口或 SELinux，而是 <strong>系统 <code>/tmp</code> 缓存目录被占满</strong>，导致多进程无法创建 socket 临时文件。</p>
+<hr>
+<h2 id="1-报错背景">1. 报错背景</h2>
+<ul>
+<li>环境：远程 Ubuntu 服务器，SSH 登录执行训练脚本</li>
+<li>任务：使用 PyTorch，DataLoader 设置了 <code>num_workers &gt; 0</code></li>
+<li>报错点：多进程通信（如 socket）初始化阶段</li>
+<li>初步尝试：修改端口、关闭防火墙、调整权限，均无效</li>
+</ul>
+<p>最终通过排查发现是 <strong><code>/tmp</code> 目录空间耗尽</strong> 所致。</p>
+<hr>
+<h2 id="2--排查步骤">2.  排查步骤</h2>
+<h3 id="21-查看-tmp-使用情况">2.1 查看 /tmp 使用情况</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">df -h /tmp
+</span></span></code></pre></div><p>输出示例：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Filesystem      Size  Used Avail Use% Mounted on
+</span></span><span class="line"><span class="cl">tmpfs            32G   32G     <span class="m">0</span> 100% /tmp
+</span></span></code></pre></div><ul>
+<li>Use% 高达 100%，说明 /tmp 分区空间被占满，无法继续写入</li>
+<li>这会导致多进程无法创建 IPC socket、FIFO 文件，从而报 PermissionError</li>
+</ul>
+<hr>
+<h3 id="22-找出占用空间的文件目录">2.2 找出占用空间的文件/目录</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sudo du -sh /tmp/* <span class="p">|</span> sort -hr <span class="p">|</span> head -n <span class="m">20</span>
+</span></span></code></pre></div><ul>
+<li><code>du -sh /tmp/*</code>：统计 <code>/tmp</code> 下各文件/目录大小</li>
+<li><code>sort -hr</code>：按大小从大到小排序</li>
+<li><code>head -n 20</code>：只显示前 20 个最大文件/目录</li>
+</ul>
+<p>输出示例：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">34G /tmp/JDPL5kiW7A
+</span></span><span class="line"><span class="cl">27G /tmp/ronT5OO6Dl
+</span></span><span class="line"><span class="cl">...
+</span></span></code></pre></div><p>这些目录可能是之前数据解压/缓存/中断任务遗留的临时文件。</p>
+<hr>
+<h3 id="23-检查是否有进程仍在使用这些目录">2.3 检查是否有进程仍在使用这些目录</h3>
+<p>为了防止误删被使用中的临时文件，可以用 lsof 排查：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sudo lsof <span class="p">|</span> grep /tmp/JDPL5kiW7A
+</span></span><span class="line"><span class="cl">sudo lsof <span class="p">|</span> grep /tmp/ronT5OO6Dl
+</span></span></code></pre></div><ul>
+<li>无输出 表示该目录已无进程占用，可考虑删除</li>
+<li>若有输出，说明还有任务在使用，请暂缓处理或重启后操作</li>
+</ul>
+<hr>
+<h3 id="24-安全删除占用目录">2.4 安全删除占用目录</h3>
+<p>确保无进程使用后，执行清理操作：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sudo rm -rf /tmp/JDPL5kiW7A
+</span></span><span class="line"><span class="cl">sudo rm -rf /tmp/ronT5OO6Dl
+</span></span></code></pre></div><ul>
+<li><code>-r</code> (recursive) 递归删除，<code>-f</code> (force) 不询问。</li>
+<li>确保没有进程正在使用这些目录，一旦删除不可恢复。</li>
+</ul>
+<p>然后再次检查 /tmp 使用情况：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">df -h /tmp
+</span></span></code></pre></div><p>此时应看到可用空间大幅回升。</p>
+<hr>
+<h3 id="25-重试训练任务">2.5 重试训练任务</h3>
+<p>恢复后再次运行你的训练脚本：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">python train.py
+</span></span></code></pre></div><ul>
+<li>若使用 PyTorch，请确保 num_workers &gt; 0；</li>
+<li>正常情况下，不再报 PermissionError，说明多进程 socket 成功初始化。</li>
+</ul>
+<hr>
+<h2 id="3-参考建议">3. 参考建议</h2>
+<ul>
+<li>可通过以下命令设置每周自动清理 <code>/tmp</code>：</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sudo systemctl <span class="nb">enable</span> tmp.mount
+</span></span></code></pre></div><ul>
+<li>或将临时目录指向另一个挂载点：</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">TMPDIR</span><span class="o">=</span>/data/tmp
+</span></span></code></pre></div><p>然后将 PyTorch 的缓存、临时写入目录也指向此处。</p>
+<hr>
+<p>如你也在训练中遇到类似的多进程失败问题，不妨也从系统 <code>/tmp</code> 空间使用情况入手排查 —— 很多“神秘报错”，背后其实是存储瓶颈。</p>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>Typora 使用技巧：PicGo 图床配置、代码块默认语言、快捷键自定义等</title>
+      <link>http://localhost:1313/posts/typora-skill/</link>
+      <pubDate>Sat, 14 Oct 2023 08:00:00 +0800</pubDate>
+      
+      <guid>http://localhost:1313/posts/typora-skill/</guid>
+      <description>本篇笔记整理了 Typora 使用过程中的常用技巧，包括如何配置 PicGo + Gitee 图床、更改默认代码语言、自定义快捷键，以及实现图片居中显示等，适用于提高 Markdown 写作效率的用户。</description>
+      <content:encoded><![CDATA[<h1 id="typora-使用技巧汇总">Typora 使用技巧汇总</h1>
+<p>本文总结了日常使用 Typora 中涉及的几个实用技巧，包括：</p>
+<ul>
+<li>配置 PicGo + Gitee 实现图床自动上传</li>
+<li>修改默认代码块语言</li>
+<li>自定义快捷键</li>
+<li>图片居中显示的写法</li>
+</ul>
+<hr>
+<h2 id="1--picgo--gitee-图床配置指南">1.  PicGo + Gitee 图床配置指南</h2>
+<p>为了让插入的图片自动上传到图床并返回外链，建议使用 PicGo 搭配 Gitee 仓库作为图床。</p>
+<h3 id="11-gitee-图床仓库配置注意事项">1.1 Gitee 图床仓库配置注意事项</h3>
+<ul>
+<li>
+<p>使用用户名而非昵称：例如 Gitee 昵称为 <code>可爱风</code>，但实际用户名为 <code>YOUR NAME</code>，PicGo 中填写时应使用用户名</p>
+</li>
+<li>
+<p>仓库路径格式正确：<code>repo</code> 应为 <code>YOUR NAME/typora_img</code>，不能包含空格或多余斜杠</p>
+</li>
+<li>
+<p><code>branch</code> 填 <code>master</code>，有其他分支也可按需填写</p>
+</li>
+<li>
+<p>图片存放路径 <code>path</code> 建议设置为 <code>img</code> 目录</p>
+</li>
+<li>
+<p>仓库必须设置为公开仓库，否则无法通过外链访问</p>
+</li>
+</ul>
+<h3 id="2-避免-typora-中上传失败的常见原因">2. 避免 Typora 中上传失败的常见原因</h3>
+<ul>
+<li>
+<p>不要勾选 Typora 的“使用相对路径”</p>
+</li>
+<li>
+<p>图片路径推荐使用 <code>![]()</code> 这种标准 Markdown 格式</p>
+</li>
+<li>
+<p>遇到上传报错时，优先检查：</p>
+<ul>
+<li>仓库是否为公开</li>
+<li>图片路径是否设置正确</li>
+<li>是否在 PicGo 中设置为 Gitee 图床并填写正确的 token</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="2-更改代码块默认语言为-python">2. 更改代码块默认语言为 Python</h2>
+<p>Typora 默认的代码块语言为空，可以修改默认语言：</p>
+<p>具体步骤：</p>
+<ol>
+<li>
+<p>找到 Typora 安装目录（Windows 一般为）：</p>
+<pre tabindex="0"><code>PATH\TO\YPUR\TYPORA\resources\app\app\window
+</code></pre></li>
+<li>
+<p>打开.json文件</p>
+</li>
+<li>
+<p>搜索如下代码片段：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="line"><span class="cl"><span class="nx">S</span><span class="p">.</span><span class="nx">localize</span><span class="p">.</span><span class="nx">getString</span><span class="p">(</span><span class="s2">&#34;code language&#34;</span><span class="p">)</span><span class="o">+</span><span class="s2">&#34;&#39;&gt;&lt;/span&gt;&#34;</span><span class="p">,</span><span class="nx">n</span><span class="p">.</span><span class="nx">childNodes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">textContent</span><span class="o">=</span><span class="nx">t</span><span class="o">||</span><span class="s2">&#34;&#34;</span><span class="p">,</span><span class="nx">t</span><span class="o">=</span><span class="nx">n</span><span class="p">,</span><span class="nx">i</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">insertChildAtIndex</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+</span></span></code></pre></div></li>
+<li>
+<p>修改为：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="line"><span class="cl"><span class="nx">S</span><span class="p">.</span><span class="nx">localize</span><span class="p">.</span><span class="nx">getString</span><span class="p">(</span><span class="s2">&#34;code language&#34;</span><span class="p">)</span><span class="o">+</span><span class="s2">&#34;&#39;&gt;&lt;/span&gt;&#34;</span><span class="p">,</span><span class="nx">n</span><span class="p">.</span><span class="nx">childNodes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">textContent</span><span class="o">=</span><span class="nx">t</span><span class="o">||</span><span class="s2">&#34;python&#34;</span><span class="p">,</span><span class="nx">t</span><span class="o">=</span><span class="nx">n</span><span class="p">,</span><span class="nx">i</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">insertChildAtIndex</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+</span></span></code></pre></div></li>
+</ol>
+<p>保存后重新启动 Typora，默认语言即为 <code>python</code>。</p>
+<hr>
+<h2 id="3-自定义快捷键配置">3. 自定义快捷键配置</h2>
+<p>Typora 支持通过配置 JSON 文件来自定义快捷键。</p>
+<h3 id="1-打开快捷键配置文件">1. 打开快捷键配置文件</h3>
+<p>可在官网说明文档中查找路径，也可以在菜单栏中打开：菜单 → 偏好设置 → 通用 → 快捷键  → 自定义快捷键</p>
+<h3 id="2-个人配置内容">2. 个人配置内容</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="line"><span class="cl">  <span class="s2">&#34;keyBinding&#34;</span><span class="err">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// for example: 
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// &#34;Always on Top&#34;: &#34;Ctrl+Shift+P&#34;
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// All other options are the menu items &#39;text label&#39; displayed from each typora menu
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nt">&#34;Heading 1&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+1&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Heading 2&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+2&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Heading 3&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+3&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Heading 4&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+4&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Heading 5&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+5&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Heading 6&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+6&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Paragraph&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+0&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Ordered List&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+I&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Unordered List&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+U&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Task List&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+Y&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Insert Image&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+P&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Outline&#34;</span><span class="p">:</span> <span class="s2">&#34;Alt+1&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Articles&#34;</span><span class="p">:</span> <span class="s2">&#34;Alt+2&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;File Tree&#34;</span><span class="p">:</span> <span class="s2">&#34;Alt+3&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Code Fences&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+C&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Insert Table&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+Shift+T&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;Strike&#34;</span><span class="p">:</span> <span class="s2">&#34;Ctrl+T&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span><span class="err">,</span>
+</span></span></code></pre></div><hr>
+<h2 id="3-图片居中显示方法">3. 图片居中显示方法</h2>
+<p>在 Markdown 中居中图片需要用到原始 HTML 标签，格式如下：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;text-align:center&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;你的图片地址&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;图片描述&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre></div><p>Typora 支持原始 HTML 渲染，因此该方法在预览中也能正常显示。</p>
+<hr>
+]]></content:encoded>
+    </item>
+    
+  </channel>
+</rss>

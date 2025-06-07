@@ -1,0 +1,41 @@
+name: Deploy Hugo site to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master        # 监听 myblog 仓库的 master 分支
+
+permissions:
+  contents: write     # 允许写 gh-pages / 发布仓库
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ① 拉取源码（包含子模块）
+      - name: Checkout source
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      # ② 安装 Hugo（Extended 版）
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: '0.147.0'
+          extended: true
+
+      # ③ 构建：这里 **指定线上 baseURL**
+      - name: Build site
+        run: hugo --minify --baseURL "https://shiningfeng.github.io/"
+
+      # ④ 部署到 Pages 仓库
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ secrets.PERSONAL_TOKEN }}         # 你的 PAT 名称保持一致
+          external_repository: ShiningFeng/shiningfeng.github.io
+          publish_dir: ./public
+          publish_branch: master

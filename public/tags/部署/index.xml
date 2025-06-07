@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>部署 on ShiningFeng&#39;s Blog</title>
+    <link>http://localhost:1313/tags/%E9%83%A8%E7%BD%B2/</link>
+    <description>Recent content in 部署 on ShiningFeng&#39;s Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-CN</language>
+    <lastBuildDate>Sat, 07 Jun 2025 15:16:08 +0800</lastBuildDate><atom:link href="http://localhost:1313/tags/%E9%83%A8%E7%BD%B2/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>从零开始搭建个人博客</title>
+      <link>http://localhost:1313/posts/guide-hugo-github-pages/</link>
+      <pubDate>Sat, 07 Jun 2025 15:16:08 +0800</pubDate>
+      
+      <guid>http://localhost:1313/posts/guide-hugo-github-pages/</guid>
+      <description>&lt;p&gt;title = &amp;ldquo;从零搭建个人博客：Hugo + GitHub Pages 全流程指南&amp;rdquo;
+date = 2025-06-07T22:00:00+08:00
+draft = false
+tags = [&amp;ldquo;博客&amp;rdquo;, &amp;ldquo;部署&amp;rdquo;, &amp;ldquo;教程&amp;rdquo;]
+categories = [&amp;ldquo;教程&amp;rdquo;]
+summary = &amp;ldquo;从零搭建个人博客，全面讲解 Hugo 和 GitHub Pages 的部署全过程。&amp;rdquo;&lt;/p&gt;
+&lt;p&gt;+++&lt;/p&gt;
+&lt;p&gt;+++&lt;/p&gt;
+&lt;h1 id=&#34;从零搭建个人博客hugo--github-pages-全流程指南&#34;&gt;从零搭建个人博客：Hugo + GitHub Pages 全流程指南&lt;/h1&gt;
+&lt;h2 id=&#34;1-安装-hugo静态网站生成器&#34;&gt;1. 安装 Hugo（静态网站生成器）&lt;/h2&gt;
+&lt;p&gt;Windows/macOS/Linux 安装 Hugo：&lt;/p&gt;
+&lt;p&gt;👉 打开 Hugo 官方下载页：https://gohugo.io/getting-started/installing/&lt;/p&gt;
+&lt;p&gt;后续步骤以 Windows 为例：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;下载对应版本的 .zip 解压 → 添加环境变量：&lt;/li&gt;
+&lt;/ol&gt;
+&lt;ul&gt;
+&lt;li&gt;按 &lt;code&gt;Win + S&lt;/code&gt;，搜索 &lt;code&gt;环境变量&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;找到「系统变量」里的 &lt;code&gt;Path&lt;/code&gt;，点击「编辑」&lt;/li&gt;
+&lt;li&gt;点击右侧「新建」，添加 Hugo 的路径（&lt;strong&gt;注意&lt;/strong&gt;：添加的是目录，不是 hugo.exe 本身！）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ol start=&#34;2&#34;&gt;
+&lt;li&gt;打开命令提示符（CMD）或 PowerShell，输入命令：&lt;code&gt;hugo version&lt;/code&gt;，如果看到类似输出：&lt;/li&gt;
+&lt;/ol&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;n&#34;&gt;hugo&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;v0&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;.125.4&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xxx&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xxx&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;Windows&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;/&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;amd64&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;BuildDate&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=...&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;说明 Hugo 已成功加入 PATH。&lt;/p&gt;</description>
+      <content:encoded><![CDATA[<p>title = &ldquo;从零搭建个人博客：Hugo + GitHub Pages 全流程指南&rdquo;
+date = 2025-06-07T22:00:00+08:00
+draft = false
+tags = [&ldquo;博客&rdquo;, &ldquo;部署&rdquo;, &ldquo;教程&rdquo;]
+categories = [&ldquo;教程&rdquo;]
+summary = &ldquo;从零搭建个人博客，全面讲解 Hugo 和 GitHub Pages 的部署全过程。&rdquo;</p>
+<p>+++</p>
+<p>+++</p>
+<h1 id="从零搭建个人博客hugo--github-pages-全流程指南">从零搭建个人博客：Hugo + GitHub Pages 全流程指南</h1>
+<h2 id="1-安装-hugo静态网站生成器">1. 安装 Hugo（静态网站生成器）</h2>
+<p>Windows/macOS/Linux 安装 Hugo：</p>
+<p>👉 打开 Hugo 官方下载页：https://gohugo.io/getting-started/installing/</p>
+<p>后续步骤以 Windows 为例：</p>
+<ol>
+<li>下载对应版本的 .zip 解压 → 添加环境变量：</li>
+</ol>
+<ul>
+<li>按 <code>Win + S</code>，搜索 <code>环境变量</code></li>
+<li>找到「系统变量」里的 <code>Path</code>，点击「编辑」</li>
+<li>点击右侧「新建」，添加 Hugo 的路径（<strong>注意</strong>：添加的是目录，不是 hugo.exe 本身！）</li>
+</ul>
+<ol start="2">
+<li>打开命令提示符（CMD）或 PowerShell，输入命令：<code>hugo version</code>，如果看到类似输出：</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">hugo</span> <span class="n">v0</span><span class="mf">.125.4</span><span class="o">-</span><span class="n">xxx</span><span class="o">-</span><span class="n">xxx</span> <span class="n">Windows</span><span class="o">/</span><span class="n">amd64</span> <span class="n">BuildDate</span><span class="o">=...</span>
+</span></span></code></pre></div><p>说明 Hugo 已成功加入 PATH。</p>
+<h2 id="2-配置-git-ssh-推送">2. 配置 Git SSH 推送</h2>
+<p>配置到 GitHub 的 <strong>SSH 协议</strong>，避免 HTTPS 的登录验证问题，并且更稳定。</p>
+<h3 id="21-生成-ssh-密钥">2.1 生成 SSH 密钥</h3>
+<p>打开 PowerShell 或 Git Bash：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ssh-keygen -t rsa -b <span class="m">4096</span> -C <span class="s2">&#34;your_email@example.com&#34;</span>
+</span></span></code></pre></div><p>按回车，一路默认。</p>
+<p>会在 <code>C:\Users\你的用户名\.ssh</code> 目录下生成两份文件：</p>
+<ul>
+<li><code>id_rsa</code>（私钥，别泄露）</li>
+<li><code>id_rsa.pub</code>（公钥）</li>
+</ul>
+<h3 id="22-添加-ssh-公钥到-github">2.2 添加 SSH 公钥到 GitHub</h3>
+<ol>
+<li>打开 GitHub：
+👉 <a href="https://github.com/settings/keys">https://github.com/settings/keys</a></li>
+<li>点击 &ldquo;New SSH Key&rdquo;</li>
+<li>Title 可以随意填，比如：<code>my-laptop</code></li>
+<li>将 <code>id_rsa.pub</code> 文件内容粘贴进去（可以用记事本打开复制）</li>
+<li>点 Save</li>
+</ol>
+<h3 id="23-更换远程地址为-ssh">2.3 更换远程地址为 SSH</h3>
+<p>在 <code>public/</code> 目录中运行：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">git</span> <span class="n">remote</span> <span class="nb">set</span><span class="o">-</span><span class="n">url</span> <span class="n">origin</span> <span class="n">git</span><span class="nd">@github.com</span><span class="p">:</span><span class="n">YOUR</span><span class="o">/</span><span class="n">PATH</span><span class="o">.</span><span class="n">github</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">git</span>
+</span></span></code></pre></div><h2 id="3-本地新建-hugo-项目">3. 本地新建 Hugo 项目</h2>
+<p>打开终端（CMD / PowerShell），执行下面的命令：</p>
+<h3 id="31-任选磁盘位置建根目录">3.1 任选磁盘位置建根目录</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="n">mkdir</span> <span class="n">D:</span><span class="p">\</span><span class="nb">hugo-myblog</span>
+</span></span><span class="line"><span class="cl"><span class="nb">cd </span><span class="n">D:</span><span class="p">\</span><span class="nb">hugo-myblog</span>
+</span></span></code></pre></div><h3 id="32-创建站点">3.2 创建站点</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="n">hugo</span> <span class="n">new</span> <span class="n">site</span> <span class="n">myblog</span>
+</span></span></code></pre></div><p>会看到提示：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">Congratulations</span><span class="o">!</span> <span class="n">Your</span> <span class="k">new</span> <span class="n">Hugo</span> <span class="n">site</span> <span class="n">was</span> <span class="n">created</span><span class="p">...</span>
+</span></span></code></pre></div><h3 id="33-初始化-git">3.3 初始化 Git</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="nb">cd </span><span class="n">myblog</span>
+</span></span><span class="line"><span class="cl"><span class="n">git</span> <span class="n">init</span>
+</span></span></code></pre></div><h3 id="34-添加主题推荐-papermod">3.4 添加主题（推荐 PaperMod）</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="n">git</span> <span class="n">submodule</span> <span class="n">add</span> <span class="n">git</span><span class="nv">@github</span><span class="p">.</span><span class="n">com</span><span class="err">:</span><span class="n">adityatelange</span><span class="p">/</span><span class="nb">hugo-PaperMod</span><span class="p">.</span><span class="py">git</span> <span class="n">themes</span><span class="p">/</span><span class="n">PaperMod</span>
+</span></span></code></pre></div><h3 id="35-配置-configtoml">3.5 配置 <code>config.toml</code></h3>
+<p>打开终端（CMD / PowerShell），执行下面的命令：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="n">notepad</span> <span class="n">config</span><span class="p">.</span><span class="py">toml</span>
+</span></span></code></pre></div><p>会提示你新建文件，在打开的窗口输入下面的内容：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-toml" data-lang="toml"><span class="line"><span class="cl"><span class="nx">baseURL</span> <span class="p">=</span> <span class="s2">&#34;http://localhost:1313/&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">languageCode</span> <span class="p">=</span> <span class="s2">&#34;zh-CN&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Your Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">theme</span> <span class="p">=</span> <span class="s2">&#34;PaperMod&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enableRobotsTXT</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">pagination</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">pagerSize</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">params</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">author</span> <span class="p">=</span> <span class="s2">&#34;Your name&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">showReadingTime</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">ShowShareButtons</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">ShowBreadCrumbs</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">ShowCodeCopyButtons</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">ShowToc</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">TocOpen</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">defaultTheme</span> <span class="p">=</span> <span class="s2">&#34;auto&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">menu</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">menu</span><span class="p">.</span><span class="nx">main</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;主页&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;/&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">weight</span> <span class="p">=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">menu</span><span class="p">.</span><span class="nx">main</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;归档&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;/archives&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">weight</span> <span class="p">=</span> <span class="mi">2</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">menu</span><span class="p">.</span><span class="nx">main</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;标签&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;/tags&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">weight</span> <span class="p">=</span> <span class="mi">3</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markup</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="nx">markup</span><span class="p">.</span><span class="nx">highlight</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">noClasses</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span></code></pre></div><p><strong>注意</strong>：如果出现问题，用记事本打开检查，重新保存为「UTF-8 无 BOM」编码格式。</p>
+<h3 id="36-写一篇测试文章">3.6 写一篇测试文章</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="n">hugo</span> <span class="n">new</span> <span class="n">posts</span><span class="p">/</span><span class="nb">hello-world</span><span class="p">.</span><span class="nb">md
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span><span class="n">notepad</span> <span class="n">content</span><span class="p">/</span><span class="n">posts</span><span class="p">/</span><span class="n">hello</span><span class="p">.</span><span class="nb">md
+</span></span></span></code></pre></div><p>编辑 <code>content/posts/hello-world.md</code>：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-md" data-lang="md"><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;你好，博客世界！&#34;
+</span></span><span class="line"><span class="cl">date: 2025-06-06
+</span></span><span class="line"><span class="cl">tags: [&#34;本地上传&#34;, &#34;测试&#34;]
+</span></span><span class="line"><span class="cl">draft: false
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">这是我的第一篇博客文章！欢迎来到我的 Hugo 博客。
+</span></span></code></pre></div><p>保存并关闭。</p>
+<h3 id="37-本地预览博客效果">3.7 本地预览博客效果</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="n">hugo</span> <span class="n">server</span> <span class="n">-D</span>
+</span></span></code></pre></div><p>浏览器访问 http://localhost:1313/，确保页面能正常显示并加载样式（有标题、菜单、文章列表）。</p>
+<h2 id="4-github-仓库配置">4 GitHub 仓库配置</h2>
+<h3 id="41-创建双仓库">4.1 创建双仓库</h3>
+<table>
+  <thead>
+      <tr>
+          <th>仓库名</th>
+          <th>用途</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>myblog</strong></td>
+          <td>源码仓库（存放  <code>config.toml</code>、Markdown、主题等）</td>
+      </tr>
+      <tr>
+          <td><strong>.github.io</strong></td>
+          <td>发布仓库（存放 Hugo 构建后的静态页面）</td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>注意：</strong></p>
+<ol>
+<li>第二个仓库名必须是：<code>你的用户名.github.io</code></li>
+<li><strong>不需要初始化 README</strong>（保持空仓库）</li>
+</ol>
+<h3 id="42-创建一个-github-个人访问令牌pat">4.2 创建一个 GitHub 个人访问令牌（PAT）</h3>
+<p>GitHub 的自动生成 <code>GITHUB_TOKEN</code> <strong>不允许跨仓库 push</strong>，所以需要 <strong>PAT（GitHub Personal Access Token）</strong>。</p>
+<ol>
+<li>打开链接：https://github.com/settings/tokens?type=beta</li>
+<li>点击 <code>Generate new token</code> → 选择 <strong>Fine-grained token</strong></li>
+<li>填写信息：
+<ul>
+<li><strong>Name</strong>：hugo-pages-token</li>
+<li><strong>Expiration</strong>：90 days（或自定义）</li>
+<li><strong>Repository access</strong>：只选择 <code>.github.io</code>仓库</li>
+<li><strong>权限设置</strong>：
+<ul>
+<li><code>Contents</code> → 勾选 <strong>Read and Write</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>最后点击 <strong>Generate token</strong></li>
+<li>拷贝生成的 token（只会显示一次！）</li>
+</ol>
+<h3 id="43-添加-token-到-myblog-仓库的-secrets-中">4.3 添加 token 到 <code>myblog</code> 仓库的 Secrets 中</h3>
+<ol>
+<li>打开 <code>myblog</code> 仓库</li>
+<li>点顶部导航栏 → <code>Settings</code></li>
+<li>左边栏选择 <code>Secrets and variables &gt; Actions</code></li>
+<li>点击 <code>New repository secret</code>
+<ul>
+<li>Name: <code>PERSONAL_TOKEN</code></li>
+<li>Secret: 粘贴你刚生成的 token</li>
+</ul>
+</li>
+</ol>
+<h2 id="5-github-pages-部署">5. GitHub Pages 部署</h2>
+<h3 id="51-连接远程并首次推送源码">5.1 连接远程并首次推送源码</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="n">git</span> <span class="n">remote</span> <span class="n">add</span> <span class="n">origin</span> <span class="n">git</span><span class="nv">@github</span><span class="p">.</span><span class="n">com</span><span class="err">:</span><span class="p">&lt;</span><span class="n">USERNAME</span><span class="p">&gt;/</span><span class="n">myblog</span><span class="p">.</span><span class="py">git</span>
+</span></span><span class="line"><span class="cl"><span class="n">git</span> <span class="n">add</span> <span class="p">.</span>
+</span></span><span class="line"><span class="cl"><span class="n">git</span> <span class="n">commit</span> <span class="n">-m</span> <span class="s2">&#34;🎉 初始化 Hugo 博客&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">git</span> <span class="n">push</span> <span class="n">-u</span> <span class="n">origin</span> <span class="n">master</span>
+</span></span></code></pre></div><h3 id="52-设置-github-actions-自动部署">5.2 设置 GitHub Actions 自动部署</h3>
+<p>创建部署脚本文件</p>
+<pre tabindex="0"><code>mkdir .github\workflows
+notepad .github\workflows\deploy.yml
+</code></pre><p>在打开的记事本中，复制并粘贴以下内容：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Deploy Hugo site to GitHub Pages</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">on</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">push</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">master]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">permissions</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l">write           </span><span class="w"> </span><span class="c"># 允许推送另一个仓库</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jobs</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">deploy</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l">ubuntu-latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Checkout source</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/checkout@v3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">submodules</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">fetch-depth</span><span class="p">:</span><span class="w"> </span><span class="m">0</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Setup Hugo</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">peaceiris/actions-hugo@v2</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">hugo-version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;0.147.0&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">extended</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build site</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">hugo --minify --baseURL &#34;https://&lt;USERNAME&gt;.github.io/&#34;  </span><span class="w"> </span><span class="c"># 换成你的线上域名</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Deploy to GitHub Pages</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">peaceiris/actions-gh-pages@v3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">personal_token</span><span class="p">:</span><span class="w"> </span><span class="l">${{ secrets.PERSONAL_TOKEN }}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">external_repository</span><span class="p">:</span><span class="w"> </span><span class="l">&lt;USERNAME&gt;/&lt;USERNAME&gt;.github.io</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">publish_dir</span><span class="p">:</span><span class="w"> </span><span class="l">./public</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">publish_branch</span><span class="p">:</span><span class="w"> </span><span class="l">master</span><span class="w">
+</span></span></span></code></pre></div><p>保存后推送：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="n">git</span> <span class="n">add</span> <span class="p">.</span><span class="n">github</span><span class="p">/</span><span class="n">workflows</span><span class="p">/</span><span class="n">deploy</span><span class="p">.</span><span class="py">yml</span>
+</span></span><span class="line"><span class="cl"><span class="n">git</span> <span class="n">commit</span> <span class="n">-m</span> <span class="s2">&#34;添加 GitHub Actions 自动部署脚本&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">git</span> <span class="n">push</span>
+</span></span></code></pre></div><h3 id="53-启用github-pages-配置">5.3 启用GitHub Pages 配置</h3>
+<ol>
+<li>进入你的仓库 <code>myblog</code></li>
+<li>点击 <code>Settings</code></li>
+<li>左侧点击 <strong>Pages</strong></li>
+<li>查看是否显示如下内容：</li>
+</ol>
+<pre tabindex="0"><code>Your site is live at https://YOURNAME.github.io/
+</code></pre><p>如果没有，确保以下设置正确：</p>
+<ul>
+<li><strong>Source</strong>: Deploy from a branch ✅</li>
+<li><strong>Branch</strong>: 选择 <code>master</code> ✅</li>
+<li><strong>/ (root)</strong>: 保持默认 ✅</li>
+<li>点一次 <code>Save</code></li>
+</ul>
+<h3 id="54-等待-actions-完成">5.4 等待 Actions 完成</h3>
+<p>推送成功后，进入 GitHub：</p>
+<ol>
+<li>打开 <code>myblog</code> 仓库 → 右上角 &ldquo;Actions&rdquo; 出现 <strong>Deploy Hugo site to GitHub Pages</strong> 任务</li>
+<li>全绿 ✅ 表示构建 + 推送成功</li>
+<li>打开 <code>https://github.com/&lt;USERNAME&gt;/&lt;USERNAME&gt;.github.io</code> 应看到 <code>index.html</code> 等文件</li>
+</ol>
+<h3 id="55-打开-github-pages">5.5 打开 GitHub Pages</h3>
+<p><code>https://&lt;USERNAME&gt;.github.io/</code> 刷新几次，样式完整即上线成功！</p>
+<h2 id="6-日常写作工作流">6 日常写作工作流</h2>
+<p>当你想要上线新的笔记或文章时，按照下面操作即可：</p>
+<ol>
+<li><strong>创建新文章</strong>：在你的 Hugo 项目中，使用 <code>hugo new</code> 命令创建新的 Markdown 文件。例如：</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">hugo new posts/my-note.md
+</span></span></code></pre></div><ol start="2">
+<li><strong>编辑文章内容</strong>：打开新创建的 Markdown 文件（例如 <code>content/posts/my-note.md</code>），使用 Markdown 语法编写你的内容。确保在文件的开头设置正确的元数据，如标题、日期、标签等。并确保设置 <code>draft: false</code> 才会被 Hugo 编译到页面中。</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-markdown" data-lang="markdown"><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;我的新笔记&#34;
+</span></span><span class="line"><span class="cl">date: 2025-06-08T10:00:00+08:00
+</span></span><span class="line"><span class="cl">tags: [&#34;笔记&#34;]
+</span></span><span class="line"><span class="cl">draft: false
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">笔记内容。
+</span></span></code></pre></div><ol start="3">
+<li><strong>本地预览</strong>：启动 Hugo 本地服务后打开浏览器访问：<code>http://localhost:1313/</code> 即可实时预览。</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="n">hugo</span> <span class="n">server</span> <span class="n">-D</span>
+</span></span></code></pre></div><ol start="4">
+<li><strong>提交到 Git 仓库</strong>：将修改提交到 Git 仓库并推送到远程仓库。</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">git add content/posts/my-note.md
+</span></span><span class="line"><span class="cl">git commit -m <span class="s2">&#34;添加新笔记：XXX&#34;</span>
+</span></span><span class="line"><span class="cl">git push origin master
+</span></span></code></pre></div><ol start="5">
+<li><strong>等待 Actions 自动部署</strong>：</li>
+</ol>
+<ul>
+<li>GitHub Actions 将会自动检测到你的推送并触发自动部署流程。你的新笔记将被构建并发布到 GitHub Pages 上。</li>
+</ul>
+<ol start="6">
+<li><strong>访问网站</strong>：</li>
+</ol>
+<ul>
+<li>打开你的 GitHub Pages 网站地址（例如 <code>https://&lt;USERNAME&gt;.github.io/</code>），查看新笔记是否已经成功发布。</li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+  </channel>
+</rss>
