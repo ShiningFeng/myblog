@@ -14,8 +14,7 @@
       
       <guid>http://localhost:1313/posts/permissionerror/</guid>
       <description>一次通过 SSH 远程连接 Ubuntu 服务器训练模型时遇到的 PermissionError 报错，追踪发现是 /tmp 缓存目录空间占满导致多进程通信失败。详细记录诊断和解决过程。</description>
-      <content:encoded><![CDATA[<h1 id="解决训练中-permissionerror-报错ubuntu-tmp-缓存占满引发的多进程失败">解决训练中 PermissionError 报错：Ubuntu <code>/tmp</code> 缓存占满引发的多进程失败</h1>
-<p>近期在通过 SSH 远程连接 Ubuntu 服务器运行深度学习训练脚本时，遇到了如下报错：</p>
+      <content:encoded><![CDATA[<p>近期在通过 SSH 远程连接 Ubuntu 服务器运行深度学习训练脚本时，遇到了如下报错：</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">PermissionError: [Errno 13] Permission denied
 </span></span><span class="line"><span class="cl">...
 </span></span><span class="line"><span class="cl">self._listener = Listener(authkey=process.current_process().authkey)
@@ -100,14 +99,13 @@
     </item>
     
     <item>
-      <title>Typora 使用技巧：PicGo 图床配置、代码块默认语言、快捷键自定义等</title>
+      <title>Typora 使用技巧</title>
       <link>http://localhost:1313/posts/typora-skill/</link>
       <pubDate>Sat, 14 Oct 2023 08:00:00 +0800</pubDate>
       
       <guid>http://localhost:1313/posts/typora-skill/</guid>
       <description>本篇笔记整理了 Typora 使用过程中的常用技巧，包括如何配置 PicGo + Gitee 图床、更改默认代码语言、自定义快捷键，以及实现图片居中显示等，适用于提高 Markdown 写作效率的用户。</description>
-      <content:encoded><![CDATA[<h1 id="typora-使用技巧汇总">Typora 使用技巧汇总</h1>
-<p>本文总结了日常使用 Typora 中涉及的几个实用技巧，包括：</p>
+      <content:encoded><![CDATA[<p>本文总结了日常使用 Typora 中涉及的几个实用技巧，包括：</p>
 <ul>
 <li>配置 PicGo + Gitee 实现图床自动上传</li>
 <li>修改默认代码块语言</li>

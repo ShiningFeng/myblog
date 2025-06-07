@@ -2,7 +2,7 @@
 title = "从 Excel 导入 Anki：批量制作卡片的完整指南"
 date = 2025-03-15T08:00:00+08:00
 draft = false
-tags = [["Memos", "教程"]]
+tags = ["Memos", "教程"]
 summary = "一文教你如何从 Excel 批量导入选择题至 Anki，包含前缀添加、字段清理、CSV 导出与模板导入等详细步骤。"
 +++
 

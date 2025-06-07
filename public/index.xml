@@ -6,26 +6,15 @@
     <description>Recent content on ShiningFeng&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-CN</language>
-    <lastBuildDate>Sat, 07 Jun 2025 16:16:52 +0800</lastBuildDate><atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 07 Jun 2025 15:42:12 +0800</lastBuildDate><atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>Hello World</title>
-      <link>http://localhost:1313/posts/hello-world/</link>
-      <pubDate>Sat, 07 Jun 2025 16:16:52 +0800</pubDate>
-      
-      <guid>http://localhost:1313/posts/hello-world/</guid>
-      <description></description>
-      <content:encoded><![CDATA[]]></content:encoded>
-    </item>
-    
-    <item>
-      <title>从零搭建个人博客</title>
+      <title>从零搭建个人博客：Hugo &#43; GitHub Pages 全流程指南</title>
       <link>http://localhost:1313/posts/guide-hugo-github-pages/</link>
       <pubDate>Sat, 07 Jun 2025 15:42:12 +0800</pubDate>
       
       <guid>http://localhost:1313/posts/guide-hugo-github-pages/</guid>
       <description>从零搭建个人博客，全面讲解 Hugo 和 GitHub Pages 的部署全过程。</description>
-      <content:encoded><![CDATA[<h1 id="从零搭建个人博客hugo--github-pages-全流程指南">从零搭建个人博客：Hugo + GitHub Pages 全流程指南</h1>
-<h2 id="1-安装-hugo静态网站生成器">1. 安装 Hugo（静态网站生成器）</h2>
+      <content:encoded><![CDATA[<h2 id="1-安装-hugo静态网站生成器">1. 安装 Hugo（静态网站生成器）</h2>
 <p>Windows/macOS/Linux 安装 Hugo：</p>
 <p>👉 打开 Hugo 官方下载页：https://gohugo.io/getting-started/installing/</p>
 <p>后续步骤以 Windows 为例：</p>
@@ -318,8 +307,7 @@ notepad .github\workflows\deploy.yml
       
       <guid>http://localhost:1313/posts/sign-push/</guid>
       <description>完整实现网站自动签到流程，并通过鸿蒙 MeoW 实现每日签到结果推送。涵盖 Cookie 抓取、sign 参数解析、状态识别与推送机制。</description>
-      <content:encoded><![CDATA[<h1 id="从零实现网站自动签到--鸿蒙-push-推送">从零实现网站自动签到 + 鸿蒙 PUSH 推送</h1>
-<p>本文记录了我如何使用 Python 脚本，自动完成网站的每日签到操作，并将签到结果通过鸿蒙系统的 MeoW 应用推送至手机，真正实现“自动签到 + 即时提醒”的全自动流程。</p>
+      <content:encoded><![CDATA[<p>本文记录了我如何使用 Python 脚本，自动完成网站的每日签到操作，并将签到结果通过鸿蒙系统的 MeoW 应用推送至手机，真正实现“自动签到 + 即时提醒”的全自动流程。</p>
 <hr>
 <h2 id="1-项目目标">1. 项目目标</h2>
 <ul>
@@ -468,8 +456,7 @@ notepad .github\workflows\deploy.yml
       
       <guid>http://localhost:1313/posts/vba-chinese-english-split/</guid>
       <description>本文将介绍如何利用 Word VBA 批处理，将中英文交替排列的文档中的段落自动提取分离。</description>
-      <content:encoded><![CDATA[<h1 id="word-vba-批处理实战高效分离中英文翻译段落">Word VBA 批处理实战：高效分离中英文翻译段落</h1>
-<p>在翻译或双语教学材料的处理中，我们经常会遇到 <strong>中英文交替排列的文档</strong>，每段中文后紧跟一段对应英文。手动分离这些翻译段不仅效率低，还容易出错。本文将介绍一种 <strong>使用 Word VBA 实现中英文段落自动分离</strong> 的完整解决方案。</p>
+      <content:encoded><![CDATA[<p>在翻译或双语教学材料的处理中，我们经常会遇到 <strong>中英文交替排列的文档</strong>，每段中文后紧跟一段对应英文。手动分离这些翻译段不仅效率低，还容易出错。本文将介绍一种 <strong>使用 Word VBA 实现中英文段落自动分离</strong> 的完整解决方案。</p>
 <h2 id="1-任务目标">1. 任务目标</h2>
 <p>任务的核心目标是 <strong>分离Word文档中的中文和英文翻译</strong>。文档中每一段包含一个翻译对，中文翻译和英文翻译交替出现。我们需要将文档中的所有中文翻译和英文翻译分别提取并整理到新文档中，实现：</p>
 <ul>
@@ -681,8 +668,7 @@ notepad .github\workflows\deploy.yml
       
       <guid>http://localhost:1313/posts/excel2anki/</guid>
       <description>一文教你如何从 Excel 批量导入选择题至 Anki，包含前缀添加、字段清理、CSV 导出与模板导入等详细步骤。</description>
-      <content:encoded><![CDATA[<h1 id="从-excel-导入-anki批量制作卡片的完整指南">从 Excel 导入 Anki：批量制作卡片的完整指南</h1>
-<p>使用 Anki 记忆工具时，很多人希望批量导入卡片，尤其是已有的 Excel 题库。本文将从 Excel 数据准备、字段清洗，到 Anki 模板配置、导入映射，手把手教你完成批量制卡。</p>
+      <content:encoded><![CDATA[<p>使用 Anki 记忆工具时，很多人希望批量导入卡片，尤其是已有的 Excel 题库。本文将从 Excel 数据准备、字段清洗，到 Anki 模板配置、导入映射，手把手教你完成批量制卡。</p>
 <hr>
 <h2 id="1-excel-数据准备">1. Excel 数据准备</h2>
 <h3 id="1-1-字段规划以选择题为例">1. 1 字段规划（以选择题为例）</h3>
@@ -832,8 +818,7 @@ notepad .github\workflows\deploy.yml
       
       <guid>http://localhost:1313/posts/permissionerror/</guid>
       <description>一次通过 SSH 远程连接 Ubuntu 服务器训练模型时遇到的 PermissionError 报错，追踪发现是 /tmp 缓存目录空间占满导致多进程通信失败。详细记录诊断和解决过程。</description>
-      <content:encoded><![CDATA[<h1 id="解决训练中-permissionerror-报错ubuntu-tmp-缓存占满引发的多进程失败">解决训练中 PermissionError 报错：Ubuntu <code>/tmp</code> 缓存占满引发的多进程失败</h1>
-<p>近期在通过 SSH 远程连接 Ubuntu 服务器运行深度学习训练脚本时，遇到了如下报错：</p>
+      <content:encoded><![CDATA[<p>近期在通过 SSH 远程连接 Ubuntu 服务器运行深度学习训练脚本时，遇到了如下报错：</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">PermissionError: [Errno 13] Permission denied
 </span></span><span class="line"><span class="cl">...
 </span></span><span class="line"><span class="cl">self._listener = Listener(authkey=process.current_process().authkey)
@@ -918,14 +903,13 @@ notepad .github\workflows\deploy.yml
     </item>
     
     <item>
-      <title>Typora 使用技巧：PicGo 图床配置、代码块默认语言、快捷键自定义等</title>
+      <title>Typora 使用技巧</title>
       <link>http://localhost:1313/posts/typora-skill/</link>
       <pubDate>Sat, 14 Oct 2023 08:00:00 +0800</pubDate>
       
       <guid>http://localhost:1313/posts/typora-skill/</guid>
       <description>本篇笔记整理了 Typora 使用过程中的常用技巧，包括如何配置 PicGo + Gitee 图床、更改默认代码语言、自定义快捷键，以及实现图片居中显示等，适用于提高 Markdown 写作效率的用户。</description>
-      <content:encoded><![CDATA[<h1 id="typora-使用技巧汇总">Typora 使用技巧汇总</h1>
-<p>本文总结了日常使用 Typora 中涉及的几个实用技巧，包括：</p>
+      <content:encoded><![CDATA[<p>本文总结了日常使用 Typora 中涉及的几个实用技巧，包括：</p>
 <ul>
 <li>配置 PicGo + Gitee 实现图床自动上传</li>
 <li>修改默认代码块语言</li>

@@ -2,28 +2,22 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:1313/posts/hello-world/</loc>
-    <lastmod>2025-06-07T16:16:52+08:00</lastmod>
+    <loc>http://localhost:1313/tags/memos/</loc>
+    <lastmod>2025-06-06T23:00:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/posts/</loc>
-    <lastmod>2025-06-07T16:16:52+08:00</lastmod>
+    <lastmod>2025-06-06T23:00:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/</loc>
-    <lastmod>2025-06-07T16:16:52+08:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/tags/memos/</loc>
-    <lastmod>2025-06-07T15:42:12+08:00</lastmod>
+    <lastmod>2025-06-06T23:00:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/tags/</loc>
-    <lastmod>2025-06-07T15:42:12+08:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/posts/guide-hugo-github-pages/</loc>
-    <lastmod>2025-06-07T15:42:12+08:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/tags/%E6%95%99%E7%A8%8B/</loc>
-    <lastmod>2025-06-07T15:42:12+08:00</lastmod>
+    <lastmod>2025-06-06T23:00:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/posts/sign-push/</loc>
+    <lastmod>2025-06-06T23:00:00+08:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/tags/%E6%95%99%E7%A8%8B/</loc>
     <lastmod>2025-06-06T23:00:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/posts/vba-chinese-english-split/</loc>
@@ -31,6 +25,9 @@
   </url><url>
     <loc>http://localhost:1313/posts/excel2anki/</loc>
     <lastmod>2025-03-15T08:00:00+08:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/posts/guide-hugo-github-pages/</loc>
+    <lastmod>2025-03-07T15:42:12+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/tags/%E7%BB%8F%E9%AA%8C/</loc>
     <lastmod>2024-10-24T08:00:00+08:00</lastmod>

@@ -6,26 +6,526 @@
     <description>Recent content in Posts on ShiningFeng&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-CN</language>
-    <lastBuildDate>Sat, 07 Jun 2025 16:16:52 +0800</lastBuildDate><atom:link href="http://localhost:1313/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 06 Jun 2025 23:00:00 +0800</lastBuildDate><atom:link href="http://localhost:1313/posts/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>Hello World</title>
-      <link>http://localhost:1313/posts/hello-world/</link>
-      <pubDate>Sat, 07 Jun 2025 16:16:52 +0800</pubDate>
+      <title>从零实现网站自动签到 &#43; 鸿蒙 PUSH 推送 </title>
+      <link>http://localhost:1313/posts/sign-push/</link>
+      <pubDate>Fri, 06 Jun 2025 23:00:00 +0800</pubDate>
       
-      <guid>http://localhost:1313/posts/hello-world/</guid>
-      <description></description>
-      <content:encoded><![CDATA[]]></content:encoded>
+      <guid>http://localhost:1313/posts/sign-push/</guid>
+      <description>完整实现网站自动签到流程，并通过鸿蒙 MeoW 实现每日签到结果推送。涵盖 Cookie 抓取、sign 参数解析、状态识别与推送机制。</description>
+      <content:encoded><![CDATA[<p>本文记录了我如何使用 Python 脚本，自动完成网站的每日签到操作，并将签到结果通过鸿蒙系统的 MeoW 应用推送至手机，真正实现“自动签到 + 即时提醒”的全自动流程。</p>
+<hr>
+<h2 id="1-项目目标">1. 项目目标</h2>
+<ul>
+<li>每天自动访问 网站签到页面</li>
+<li>自动提取网页动态参数 <code>sign</code></li>
+<li>发送模拟点击请求进行签到</li>
+<li>解析签到响应判断状态（成功、已签到、Cookie 失效等）</li>
+<li>使用鸿蒙 MeoW 提供的接口推送签到结果</li>
+<li>支持通过系统计划任务定时执行脚本</li>
+</ul>
+<hr>
+<h2 id="2-环境准备">2. 环境准备</h2>
+<h3 id="21-安装依赖库">2.1 安装依赖库</h3>
+<p>我们使用 <code>requests</code> 进行网页请求，<code>BeautifulSoup</code> 进行 HTML 解析，命令如下：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">pip install requests beautifulsoup4
+</span></span></code></pre></div><hr>
+<h3 id="22-获取登录-cookie">2.2 获取登录 Cookie</h3>
+<p>访问网站并抓取 Cookie 值：</p>
+<ol>
+<li>打开浏览器登录网站，并勾选 “记住我”</li>
+<li>按下 <code>F12</code> → 进入开发者工具 → 切换到「Application」面板</li>
+<li>展开 Cookies → 找到域名 <code>https://www.网站.com</code></li>
+<li>提取以下两个字段：</li>
+</ol>
+<pre tabindex="0"><code>bbs_sid=xxxx; bbs_token=xxxx
+</code></pre><p>⚠️ 必须在登录状态下获取，否则 Cookie 会很快过期。</p>
+<hr>
+<h2 id="3--获取鸿蒙-push-接口">3.  获取鸿蒙 PUSH 接口</h2>
+<p>升级鸿蒙NEXT系统的手机，去应用市场安装 <strong>MeoW App</strong> 后可获得你的推送链接，格式如下：</p>
+<pre tabindex="0"><code>https://api.chuckfang.com/你的用户名/推送内容
+</code></pre><p>将推送内容拼接至接口末尾即可实现消息推送。</p>
+<hr>
+<h2 id="4-签到流程逻辑详解">4. 签到流程逻辑详解</h2>
+<ol>
+<li>
+<p>访问签到页 <code>https://www.网站.com/sg_sign.htm</code></p>
+</li>
+<li>
+<p>从 JS 中提取动态参数 <code>sign</code></p>
+</li>
+<li>
+<p>构造 POST 请求，附带 <code>sign</code> 参数发起签到</p>
+</li>
+<li>
+<p>判断响应文本内容：</p>
+<ul>
+<li>✅ 签到成功</li>
+<li>⚠️ 已签到</li>
+<li>❌ Cookie 失效</li>
+</ul>
+</li>
+<li>
+<p>发送推送通知至鸿蒙手机</p>
+</li>
+</ol>
+<hr>
+<h2 id="5-完整代码">5. 完整代码</h2>
+<p>保存为 <code>daily_auto_sign.py</code>：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">requests</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">bs4</span> <span class="kn">import</span> <span class="n">BeautifulSoup</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">re</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">datetime</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># === 配置区域 ===</span>
+</span></span><span class="line"><span class="cl"><span class="n">COOKIE</span> <span class="o">=</span> <span class="s2">&#34;bbs_sid=xxxx; bbs_token=xxxx&#34;</span>  <span class="c1"># 替换为你的 Cookie</span>
+</span></span><span class="line"><span class="cl"><span class="n">PUSH_API</span> <span class="o">=</span> <span class="s2">&#34;https://api.chuckfang.com/你的用户名&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">HEADERS</span> <span class="o">=</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;User-Agent&#34;</span><span class="p">:</span> <span class="s2">&#34;Mozilla/5.0 (Windows NT 10.0; Win64; x64)&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;Referer&#34;</span><span class="p">:</span> <span class="s2">&#34;https://www.网站.com/&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;Cookie&#34;</span><span class="p">:</span> <span class="n">COOKIE</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">send_push</span><span class="p">(</span><span class="n">content</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;推送消息到鸿蒙 MeoW&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">try</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">url</span> <span class="o">=</span> <span class="n">PUSH_API</span> <span class="o">+</span> <span class="n">content</span>
+</span></span><span class="line"><span class="cl">        <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;❌ 推送失败：&#34;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">get_sign_token</span><span class="p">(</span><span class="n">session</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;提取签到参数 sign&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">res</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&#34;https://www.网站.com/sg_sign.htm&#34;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">HEADERS</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">soup</span> <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="s2">&#34;html.parser&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="n">soup</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&#34;script&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;sign\s*=\s*&#34;([^&#34;]+)&#34;&#39;</span><span class="p">,</span> <span class="n">script</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="k">match</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="k">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">None</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">do_sign</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">sign_token</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;发送签到 POST 请求&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&#34;sign&#34;</span><span class="p">:</span> <span class="n">sign_token</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="n">res</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&#34;https://www.网站.com/sg_sign.htm&#34;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">HEADERS</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">text</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">sign_in</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">    <span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&#34;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">sign_token</span> <span class="o">=</span> <span class="n">get_sign_token</span><span class="p">(</span><span class="n">session</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">sign_token</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;[</span><span class="si">{</span><span class="n">now</span><span class="si">}</span><span class="s2">] ❌ 获取 sign 参数失败&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">send_push</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">result</span> <span class="o">=</span> <span class="n">do_sign</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">sign_token</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="s2">&#34;签到成功&#34;</span> <span class="ow">in</span> <span class="n">result</span> <span class="ow">or</span> <span class="s2">&#34;恭喜获得&#34;</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;[</span><span class="si">{</span><span class="n">now</span><span class="si">}</span><span class="s2">] ✅ 签到成功&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">elif</span> <span class="s2">&#34;已经签到&#34;</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;[</span><span class="si">{</span><span class="n">now</span><span class="si">}</span><span class="s2">] ⚠️ 今天已签到&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">elif</span> <span class="s2">&#34;请先登录&#34;</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;[</span><span class="si">{</span><span class="n">now</span><span class="si">}</span><span class="s2">] ❌ Cookie 已失效&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">else</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;[</span><span class="si">{</span><span class="n">now</span><span class="si">}</span><span class="s2">] ❓ 未知返回&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">send_push</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&#34;__main__&#34;</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">sign_in</span><span class="p">()</span>
+</span></span></code></pre></div><hr>
+<h2 id="6-设置定时任务windows">6. 设置定时任务（Windows）</h2>
+<ol>
+<li>创建 <code>run_sign.bat</code> 文件：</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bat" data-lang="bat"><span class="line"><span class="cl"><span class="k">PATH</span>\TO\YOUR\python.exe D:\你的路径\daily_auto_sign.py
+</span></span></code></pre></div><ol start="2">
+<li>打开「任务计划程序」：
+<ul>
+<li>创建基本任务</li>
+<li>触发器：每天 → 设置时间如早上 08:00</li>
+<li>操作：启动程序 → 「程序或脚本」中直接输入：cmd.exe → 「添加参数（可选）」中输入：<code>/c start &quot;&quot; &quot;\YOUR\PATH\run_sign.bat&quot;</code></li>
+</ul>
+</li>
+</ol>
+]]></content:encoded>
     </item>
     
     <item>
-      <title>从零搭建个人博客</title>
+      <title>Word VBA 批处理：高效分离中英文翻译段落</title>
+      <link>http://localhost:1313/posts/vba-chinese-english-split/</link>
+      <pubDate>Thu, 17 Apr 2025 15:50:42 +0800</pubDate>
+      
+      <guid>http://localhost:1313/posts/vba-chinese-english-split/</guid>
+      <description>本文将介绍如何利用 Word VBA 批处理，将中英文交替排列的文档中的段落自动提取分离。</description>
+      <content:encoded><![CDATA[<p>在翻译或双语教学材料的处理中，我们经常会遇到 <strong>中英文交替排列的文档</strong>，每段中文后紧跟一段对应英文。手动分离这些翻译段不仅效率低，还容易出错。本文将介绍一种 <strong>使用 Word VBA 实现中英文段落自动分离</strong> 的完整解决方案。</p>
+<h2 id="1-任务目标">1. 任务目标</h2>
+<p>任务的核心目标是 <strong>分离Word文档中的中文和英文翻译</strong>。文档中每一段包含一个翻译对，中文翻译和英文翻译交替出现。我们需要将文档中的所有中文翻译和英文翻译分别提取并整理到新文档中，实现：</p>
+<ul>
+<li><strong>连续的中文段落</strong></li>
+<li><strong>连续的英文段落</strong></li>
+</ul>
+<hr>
+<h2 id="2-文档特点与处理难点">2. 文档特点与处理难点</h2>
+<table>
+  <thead>
+      <tr>
+          <th>问题</th>
+          <th>描述</th>
+          <th>解决方案</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>中英文交替段落</td>
+          <td>文档结构为「中文段 → 英文段 → 中文段 → 英文段」</td>
+          <td>使用正则和 Unicode 判断每段是中文还是英文</td>
+      </tr>
+      <tr>
+          <td>软回车符（Line Break）</td>
+          <td>表示段内换行，显示为 ↵，VBA 中为 <code>Chr(11)</code></td>
+          <td>统一替换为真正的段落符 <code>vbCrLf</code></td>
+      </tr>
+      <tr>
+          <td>制表符（Tab）</td>
+          <td>显示为黑色方块，干扰排版</td>
+          <td>替换为空字符串进行删除</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<h2 id="3-问题与解决方案">3. 问题与解决方案</h2>
+<h3 id="问题-1中文和英文翻译的分离">问题 1：中文和英文翻译的分离</h3>
+<ul>
+<li><strong>问题描述</strong>：中文和英文翻译在文档中是交替的，但它们并没有明确的分隔标志，且每个段落都是一个翻译单元。需要遍历每个段落并根据其内容判断该段落是中文还是英文，然后将它们分离到不同的部分。</li>
+<li><strong>解决方案</strong>：
+<ul>
+<li>使用 <code>ContainsChinese</code> 函数来判断每个段落是否包含中文字符，通过遍历文档中的每个段落并根据语言类型分别存储中文和英文内容。</li>
+<li>在分离文本时，我们确保每段中文或英文之间没有多余的空行，通过逻辑判断避免在每个段落后添加额外的换行符。</li>
+</ul>
+</li>
+</ul>
+<h3 id="问题-2软回车符的处理">问题 2：软回车符的处理</h3>
+<ul>
+<li><strong>问题描述</strong>：文档中的软回车符（Line Break，通常显示为向下箭头符号）并不是一个有效的回车字符，而只是行间的分隔符。它们需要被替换为硬回车符（换行符），否则文档格式可能会混乱。</li>
+<li><strong>解决方案</strong>：
+<ul>
+<li>最初没有处理软回车符，导致文档中出现格式不一致的问题。通过查找并替换 <code>Chr(11)</code>（软回车符）为 <code>vbCrLf</code>（硬回车符），我们确保段落正确分隔，每个翻译对显示在新的行中。</li>
+<li>通过 <code>.Text = Chr(11)</code> 查找软回车符并使用 <code>.Replacement.Text = vbCrLf</code> 进行替换，确保段落的格式整洁。</li>
+</ul>
+</li>
+</ul>
+<h3 id="问题-3制表符的处理">问题 3：制表符的处理</h3>
+<ul>
+<li><strong>问题描述</strong>：文档中包含制表符（Tab符号），这些符号显示为黑色方块，影响文档的整洁性。制表符通常用于缩进，但它们不适合在最终文档中出现。</li>
+<li><strong>解决方案</strong>：
+<ul>
+<li>起初，没有处理制表符，导致文档中出现了难以去除的黑色方块。后来，我们通过查找并删除制表符（<code>Chr(9)</code>）来解决这个问题。为了不让其影响文档的视觉效果，我们将制表符替换为空字符串，从而删除它们。</li>
+</ul>
+</li>
+</ul>
+<h2 id="4-最终实现">4. 最终实现</h2>
+<h3 id="第一步统一格式软回车与制表符清理">第一步：统一格式（软回车与制表符清理）</h3>
+<ul>
+<li>将所有软回车 <code>Chr(11)</code> 替换为真正的段落符 <code>vbCrLf</code></li>
+<li>删除所有制表符 <code>Chr(9)</code></li>
+</ul>
+<h3 id="第二步判断每段语言类型">第二步：判断每段语言类型</h3>
+<ul>
+<li>遍历所有段落</li>
+<li>利用 <code>AscW()</code> 判断字符是否在中文 Unicode 范围（19968~40959）</li>
+</ul>
+<h3 id="第三步将中英文段落分类收集">第三步：将中英文段落分类收集</h3>
+<ul>
+<li>若段落中包含中文字符，则归为中文段落</li>
+<li>否则归为英文段落</li>
+</ul>
+<h3 id="第四步输出新文档">第四步：输出新文档</h3>
+<ul>
+<li>生成新 Word 文档</li>
+<li>插入整理后的中文与英文内容</li>
+<li>保存输出</li>
+</ul>
+<hr>
+<h2 id="5-vba-源代码">5. VBA 源代码</h2>
+<p>以下代码可直接复制到 Word 的 VBA 编辑器中使用：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-vb" data-lang="vb"><span class="line"><span class="cl"><span class="k">Sub</span> <span class="nf">CleanUpAndSeparateText</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">doc</span> <span class="ow">As</span> <span class="n">Document</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Set</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">ActiveDocument</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">chineseText</span> <span class="ow">As</span> <span class="kt">String</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">englishText</span> <span class="ow">As</span> <span class="kt">String</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">para</span> <span class="ow">As</span> <span class="n">Paragraph</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">paraText</span> <span class="ow">As</span> <span class="kt">String</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 初始化变量
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="n">chineseText</span> <span class="o">=</span> <span class="s">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">englishText</span> <span class="o">=</span> <span class="s">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 查找并替换软回车（向下箭头）为硬回车
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">With</span> <span class="n">doc</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">Find</span>
+</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">ClearFormatting</span>
+</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">Text</span> <span class="o">=</span> <span class="n">Chr</span><span class="p">(</span><span class="n">11</span><span class="p">)</span> <span class="c">&#39; 软回车（Line Break）的ASCII码是 11
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="p">.</span><span class="n">Replacement</span><span class="p">.</span><span class="n">ClearFormatting</span>
+</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">Replacement</span><span class="p">.</span><span class="n">Text</span> <span class="o">=</span> <span class="n">vbCrLf</span> <span class="c">&#39; 替换为真正的回车符
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="p">.</span><span class="n">Execute</span> <span class="n">Replace</span><span class="p">:</span><span class="o">=</span><span class="n">wdReplaceAll</span>
+</span></span><span class="line"><span class="cl">    <span class="k">End</span> <span class="k">With</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 查找并删除制表符（Tab符号）
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">With</span> <span class="n">doc</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">Find</span>
+</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">ClearFormatting</span>
+</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">Text</span> <span class="o">=</span> <span class="n">Chr</span><span class="p">(</span><span class="n">9</span><span class="p">)</span> <span class="c">&#39; 制表符的ASCII码是 9
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="p">.</span><span class="n">Replacement</span><span class="p">.</span><span class="n">ClearFormatting</span>
+</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">Replacement</span><span class="p">.</span><span class="n">Text</span> <span class="o">=</span> <span class="s">&#34;&#34;</span> <span class="c">&#39; 用空字符串替换（删除制表符）
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="p">.</span><span class="n">Execute</span> <span class="n">Replace</span><span class="p">:</span><span class="o">=</span><span class="n">wdReplaceAll</span>
+</span></span><span class="line"><span class="cl">    <span class="k">End</span> <span class="k">With</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 遍历文档中的段落并进行中文和英文的分离
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">For</span> <span class="k">Each</span> <span class="n">para</span> <span class="ow">In</span> <span class="n">doc</span><span class="p">.</span><span class="n">Paragraphs</span>
+</span></span><span class="line"><span class="cl">        <span class="n">paraText</span> <span class="o">=</span> <span class="n">Trim</span><span class="p">(</span><span class="n">para</span><span class="p">.</span><span class="n">Range</span><span class="p">.</span><span class="n">Text</span><span class="p">)</span> <span class="c">&#39; 获取段落的文本
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>
+</span></span><span class="line"><span class="cl">        <span class="c">&#39; 判断段落是否包含内容
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="k">If</span> <span class="n">Len</span><span class="p">(</span><span class="n">paraText</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">0</span> <span class="k">Then</span>
+</span></span><span class="line"><span class="cl">            <span class="c">&#39; 判断段落是中文还是英文
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>            <span class="k">If</span> <span class="n">ContainsChinese</span><span class="p">(</span><span class="n">paraText</span><span class="p">)</span> <span class="k">Then</span>
+</span></span><span class="line"><span class="cl">                <span class="c">&#39; 删除每个中文段落末尾的多余换行
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>                <span class="k">If</span> <span class="n">Len</span><span class="p">(</span><span class="n">chineseText</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">0</span> <span class="k">Then</span>
+</span></span><span class="line"><span class="cl">                    <span class="n">chineseText</span> <span class="o">=</span> <span class="n">chineseText</span> <span class="o">&amp;</span> <span class="n">paraText</span>
+</span></span><span class="line"><span class="cl">                <span class="k">Else</span>
+</span></span><span class="line"><span class="cl">                    <span class="n">chineseText</span> <span class="o">=</span> <span class="n">paraText</span>
+</span></span><span class="line"><span class="cl">                <span class="k">End</span> <span class="k">If</span>
+</span></span><span class="line"><span class="cl">            <span class="k">Else</span>
+</span></span><span class="line"><span class="cl">                <span class="c">&#39; 如果不是中文，则归类为英文
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>                <span class="c">&#39; 删除每个英文段落末尾的多余换行
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>                <span class="k">If</span> <span class="n">Len</span><span class="p">(</span><span class="n">englishText</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">0</span> <span class="k">Then</span>
+</span></span><span class="line"><span class="cl">                    <span class="n">englishText</span> <span class="o">=</span> <span class="n">englishText</span> <span class="o">&amp;</span> <span class="n">paraText</span>
+</span></span><span class="line"><span class="cl">                <span class="k">Else</span>
+</span></span><span class="line"><span class="cl">                    <span class="n">englishText</span> <span class="o">=</span> <span class="n">paraText</span>
+</span></span><span class="line"><span class="cl">                <span class="k">End</span> <span class="k">If</span>
+</span></span><span class="line"><span class="cl">            <span class="k">End</span> <span class="k">If</span>
+</span></span><span class="line"><span class="cl">        <span class="k">End</span> <span class="k">If</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Next</span> <span class="n">para</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 创建新的文档并输出中文和英文
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">Dim</span> <span class="n">newDoc</span> <span class="ow">As</span> <span class="n">Document</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Set</span> <span class="n">newDoc</span> <span class="o">=</span> <span class="n">Documents</span><span class="p">.</span><span class="n">Add</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 插入中文和英文部分
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="n">newDoc</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">InsertAfter</span> <span class="s">&#34;中文翻译：&#34;</span> <span class="o">&amp;</span> <span class="n">vbCrLf</span> <span class="o">&amp;</span> <span class="n">chineseText</span> <span class="o">&amp;</span> <span class="n">vbCrLf</span>
+</span></span><span class="line"><span class="cl">    <span class="n">newDoc</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">InsertAfter</span> <span class="s">&#34;英文翻译：&#34;</span> <span class="o">&amp;</span> <span class="n">vbCrLf</span> <span class="o">&amp;</span> <span class="n">englishText</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 保存新文档
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="n">newDoc</span><span class="p">.</span><span class="n">SaveAs2</span> <span class="s">&#34;C:\Users\12509\Desktop\n1.docx&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">newDoc</span><span class="p">.</span><span class="n">Close</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">MsgBox</span> <span class="s">&#34;文本已清理并分离中文和英文翻译！&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="k">End</span> <span class="k">Sub</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">&#39; 判断文本中是否包含中文字符
+</span></span></span><span class="line"><span class="cl"><span class="c"></span><span class="k">Function</span> <span class="nf">ContainsChinese</span><span class="p">(</span><span class="n">text</span> <span class="ow">As</span> <span class="kt">String</span><span class="p">)</span> <span class="ow">As</span> <span class="kt">Boolean</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">i</span> <span class="ow">As</span> <span class="kt">Integer</span>
+</span></span><span class="line"><span class="cl">    <span class="n">ContainsChinese</span> <span class="o">=</span> <span class="k">False</span>
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 遍历文本中的每个字符
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">For</span> <span class="n">i</span> <span class="o">=</span> <span class="n">1</span> <span class="k">To</span> <span class="n">Len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="c">&#39; 如果字符的Unicode值在中文范围内，返回True
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="k">If</span> <span class="p">(</span><span class="n">AscW</span><span class="p">(</span><span class="n">Mid</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">1</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="n">19968</span> <span class="ow">And</span> <span class="n">AscW</span><span class="p">(</span><span class="n">Mid</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">1</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="n">40959</span><span class="p">)</span> <span class="k">Then</span>
+</span></span><span class="line"><span class="cl">            <span class="n">ContainsChinese</span> <span class="o">=</span> <span class="k">True</span>
+</span></span><span class="line"><span class="cl">            <span class="k">Exit</span> <span class="k">Function</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">End</span> <span class="k">If</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Next</span> <span class="n">i</span>
+</span></span><span class="line"><span class="cl"><span class="k">End</span> <span class="k">Function</span>
+</span></span></code></pre></div><blockquote>
+<p><strong>提示</strong>：请将保存路径 <code>C:\Users\YourUsername\Desktop\...</code> 替换为你自己的桌面路径。</p></blockquote>
+<hr>
+<h2 id="6-效果展示">6. 效果展示</h2>
+<table>
+  <thead>
+      <tr>
+          <th>原始内容（交替段落）</th>
+          <th>处理后输出</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>段落1（中文）<!-- raw HTML omitted -->段落2（英文）<!-- raw HTML omitted -->段落3（中文）<!-- raw HTML omitted -->段落4（英文）</td>
+          <td>中文翻译：<!-- raw HTML omitted -->段落1<!-- raw HTML omitted -->段落3<!-- raw HTML omitted --><!-- raw HTML omitted -->英文翻译：<!-- raw HTML omitted -->段落2<!-- raw HTML omitted -->段落4</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<h2 id="7-下载和使用方式">7. 下载和使用方式</h2>
+<ol>
+<li>打开 Word，按下 <code>Alt + F11</code> 打开 <strong>VBA 编辑器</strong></li>
+<li>插入模块（Insert &gt; Module）</li>
+<li>粘贴代码并保存</li>
+<li>回到 Word，运行宏 <code>CleanUpAndSeparateText</code></li>
+</ol>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>从 Excel 导入 Anki：批量制作卡片的完整指南</title>
+      <link>http://localhost:1313/posts/excel2anki/</link>
+      <pubDate>Sat, 15 Mar 2025 08:00:00 +0800</pubDate>
+      
+      <guid>http://localhost:1313/posts/excel2anki/</guid>
+      <description>一文教你如何从 Excel 批量导入选择题至 Anki，包含前缀添加、字段清理、CSV 导出与模板导入等详细步骤。</description>
+      <content:encoded><![CDATA[<p>使用 Anki 记忆工具时，很多人希望批量导入卡片，尤其是已有的 Excel 题库。本文将从 Excel 数据准备、字段清洗，到 Anki 模板配置、导入映射，手把手教你完成批量制卡。</p>
+<hr>
+<h2 id="1-excel-数据准备">1. Excel 数据准备</h2>
+<h3 id="1-1-字段规划以选择题为例">1. 1 字段规划（以选择题为例）</h3>
+<table>
+  <thead>
+      <tr>
+          <th>列号</th>
+          <th>内容说明</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>B</td>
+          <td>问题</td>
+      </tr>
+      <tr>
+          <td>C~F</td>
+          <td>选项 A/B/C/D</td>
+      </tr>
+      <tr>
+          <td>G</td>
+          <td>正确答案</td>
+      </tr>
+      <tr>
+          <td>H</td>
+          <td>解析（可选）</td>
+      </tr>
+  </tbody>
+</table>
+<p>建议每列对应 Anki 中的一个字段，方便后续映射。</p>
+<hr>
+<h3 id="12-批量添加选项前缀">1.2 批量添加选项前缀</h3>
+<p>为指定列 <code>C/D/E/F</code> 的文本内容自动添加字母前缀  <code>A./B./C./D.</code>，提高排版一致性。使用如下 VBA 宏：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-vb" data-lang="vb"><span class="line"><span class="cl"><span class="n">Attribute</span> <span class="n">VB_Name</span> <span class="o">=</span> <span class="s">&#34;AddAlphaHeader&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="k">Sub</span> <span class="nf">AddCorrectPrefixes</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">ws</span> <span class="ow">As</span> <span class="n">Worksheet</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">lastRow</span> <span class="ow">As</span> <span class="kt">Long</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">i</span> <span class="ow">As</span> <span class="kt">Long</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 定义工作表
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">Set</span> <span class="n">ws</span> <span class="o">=</span> <span class="n">ThisWorkbook</span><span class="p">.</span><span class="n">Sheets</span><span class="p">(</span><span class="s">&#34;Sheet1&#34;</span><span class="p">)</span> <span class="c">&#39; 请根据你的实际表名修改 &#34;Sheet1&#34;
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 找到最后一行
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="n">lastRow</span> <span class="o">=</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">ws</span><span class="p">.</span><span class="n">Rows</span><span class="p">.</span><span class="n">Count</span><span class="p">,</span> <span class="s">&#34;B&#34;</span><span class="p">).</span><span class="n">End</span><span class="p">(</span><span class="n">xlUp</span><span class="p">).</span><span class="n">Row</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 遍历每一行，为 C、D、E、F 列添加前缀
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">For</span> <span class="n">i</span> <span class="o">=</span> <span class="n">5</span> <span class="k">To</span> <span class="n">lastRow</span> <span class="c">&#39; 假设从第5行开始，需根据实际情况修改
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="k">If</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;C&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">&lt;&gt;</span> <span class="s">&#34;&#34;</span> <span class="k">Then</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;C&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">=</span> <span class="s">&#34;A. &#34;</span> <span class="o">&amp;</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;C&#34;</span><span class="p">).</span><span class="n">Value</span>
+</span></span><span class="line"><span class="cl">        <span class="k">If</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;D&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">&lt;&gt;</span> <span class="s">&#34;&#34;</span> <span class="k">Then</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;D&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">=</span> <span class="s">&#34;B. &#34;</span> <span class="o">&amp;</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;D&#34;</span><span class="p">).</span><span class="n">Value</span>
+</span></span><span class="line"><span class="cl">        <span class="k">If</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;E&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">&lt;&gt;</span> <span class="s">&#34;&#34;</span> <span class="k">Then</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;E&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">=</span> <span class="s">&#34;C. &#34;</span> <span class="o">&amp;</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;E&#34;</span><span class="p">).</span><span class="n">Value</span>
+</span></span><span class="line"><span class="cl">        <span class="k">If</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;F&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">&lt;&gt;</span> <span class="s">&#34;&#34;</span> <span class="k">Then</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;F&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">=</span> <span class="s">&#34;D. &#34;</span> <span class="o">&amp;</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;F&#34;</span><span class="p">).</span><span class="n">Value</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Next</span> <span class="n">i</span>
+</span></span><span class="line"><span class="cl"><span class="k">End</span> <span class="k">Sub</span>
+</span></span></code></pre></div><p><strong>提示</strong>：根据实际的 Excel 文件，适当修改宏中“工作表名称”和循环起始行。</p>
+<hr>
+<h3 id="13-清理无效字符">1.3 清理无效字符</h3>
+<p>有些题干或选项前会有中文标点或空格，可以使用如下宏清除开头杂字符：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-vb" data-lang="vb"><span class="line"><span class="cl"><span class="n">Attribute</span> <span class="n">VB_Name</span> <span class="o">=</span> <span class="s">&#34;SanitizeLead&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="k">Function</span> <span class="nf">CleanText</span><span class="p">(</span><span class="n">cell</span> <span class="ow">As</span> <span class="n">Range</span><span class="p">)</span> <span class="ow">As</span> <span class="kt">String</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">str</span> <span class="ow">As</span> <span class="kt">String</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">i</span> <span class="ow">As</span> <span class="kt">Integer</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">symbols</span> <span class="ow">As</span> <span class="kt">String</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 需要删除的符号
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="n">symbols</span> <span class="o">=</span> <span class="s">&#34;、，。．.&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">str</span> <span class="o">=</span> <span class="n">cell</span><span class="p">.</span><span class="n">Value</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c">&#39; 删除开头的空格和指定符号
+</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">Do</span> <span class="k">While</span> <span class="n">Len</span><span class="p">(</span><span class="n">str</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">0</span> <span class="ow">And</span> <span class="p">(</span><span class="n">Left</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">1</span><span class="p">)</span> <span class="o">=</span> <span class="s">&#34; &#34;</span> <span class="ow">Or</span> <span class="n">Left</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">1</span><span class="p">)</span> <span class="o">=</span> <span class="n">ChrW</span><span class="p">(</span><span class="n">12288</span><span class="p">)</span> <span class="ow">Or</span> <span class="n">InStr</span><span class="p">(</span><span class="n">symbols</span><span class="p">,</span> <span class="n">Left</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">1</span><span class="p">))</span> <span class="o">&gt;</span> <span class="n">0</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">str</span> <span class="o">=</span> <span class="n">Mid</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">2</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">Loop</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">CleanText</span> <span class="o">=</span> <span class="n">str</span>
+</span></span><span class="line"><span class="cl"><span class="k">End</span> <span class="k">Function</span>
+</span></span></code></pre></div><hr>
+<h2 id="2-导出为-csvutf-8">2. 导出为 CSV（UTF-8）</h2>
+<ol>
+<li>Excel 顶部菜单 → <code>文件 &gt; 另存为</code></li>
+<li>格式选择：<code>CSV UTF-8（逗号分隔）</code></li>
+<li>文件名建议为英文，如 <code>anki_cards.csv</code></li>
+</ol>
+<hr>
+<h2 id="3-anki-设置与导入">3. Anki 设置与导入</h2>
+<h3 id="31-创建新的-note-type笔记类型">3.1 创建新的 Note Type（笔记类型）</h3>
+<ul>
+<li>打开 Anki → <code>Tools &gt; Manage Note Types</code></li>
+<li><code>Add</code> 创建或克隆一个新的类型（如“多选题”）</li>
+<li><code>Fields</code>：添加与 Excel 对应的字段（如 问题、A、B、C、D、正确答案、解析）</li>
+<li><code>Cards</code>：编辑前/背面模板，例如：</li>
+</ul>
+<p><strong>Front Template</strong></p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    问题：{{问题}}<span class="p">&lt;</span><span class="nt">br</span><span class="p">&gt;&lt;</span><span class="nt">br</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {{A}}<span class="p">&lt;</span><span class="nt">br</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {{B}}<span class="p">&lt;</span><span class="nt">br</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {{C}}<span class="p">&lt;</span><span class="nt">br</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {{D}}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre></div><p><strong>Back Template</strong></p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl">{{FrontSide}}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">hr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">正确答案：{{正确答案}}<span class="p">&lt;</span><span class="nt">br</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">解析：{{解析}}
+</span></span></code></pre></div><hr>
+<h3 id="32-导入-csv-文件">3.2 导入 CSV 文件</h3>
+<ol>
+<li>打开 Anki → <code>File &gt; Import</code> 选择 <code>.csv</code> 文件，编码确认为 UTF-8</li>
+<li><code>Type</code>：选“多选题”或对应的 Note Type</li>
+<li><code>Deck</code>：选择牌组</li>
+<li><code>Delimiter</code>：选择逗号（CSV）</li>
+<li>设置字段映射：
+<ul>
+<li>B → 问题</li>
+<li>C → A</li>
+<li>D → B</li>
+<li>E → C</li>
+<li>F → D</li>
+<li>G → 正确答案</li>
+<li>H（可选）→ 解析</li>
+</ul>
+</li>
+<li>完成导入后点击 “Import”</li>
+</ol>
+<hr>
+<h2 id="4-预览与检查">4. 预览与检查</h2>
+<ul>
+<li>点击 Browse，选择你刚导入的牌组</li>
+<li>确认每个字段对应正确</li>
+<li>使用卡片预览检查格式是否清晰</li>
+</ul>
+<hr>
+<h2 id="tips--常见问题">Tips &amp; 常见问题</h2>
+<ul>
+<li>若乱码，确认保存时编码为 UTF-8</li>
+<li>多余空行会导入空卡片，导入前请清理数据</li>
+<li>选项顺序建议保持一致，否则模板显示混乱</li>
+<li>若多个字段需要清洗，可在 Excel 中先使用 VBA 批处理</li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>从零搭建个人博客：Hugo &#43; GitHub Pages 全流程指南</title>
       <link>http://localhost:1313/posts/guide-hugo-github-pages/</link>
-      <pubDate>Sat, 07 Jun 2025 15:42:12 +0800</pubDate>
+      <pubDate>Fri, 07 Mar 2025 15:42:12 +0800</pubDate>
       
       <guid>http://localhost:1313/posts/guide-hugo-github-pages/</guid>
       <description>从零搭建个人博客，全面讲解 Hugo 和 GitHub Pages 的部署全过程。</description>
-      <content:encoded><![CDATA[<h1 id="从零搭建个人博客hugo--github-pages-全流程指南">从零搭建个人博客：Hugo + GitHub Pages 全流程指南</h1>
-<h2 id="1-安装-hugo静态网站生成器">1. 安装 Hugo（静态网站生成器）</h2>
+      <content:encoded><![CDATA[<h2 id="1-安装-hugo静态网站生成器">1. 安装 Hugo（静态网站生成器）</h2>
 <p>Windows/macOS/Linux 安装 Hugo：</p>
 <p>👉 打开 Hugo 官方下载页：https://gohugo.io/getting-started/installing/</p>
 <p>后续步骤以 Windows 为例：</p>
@@ -312,528 +812,13 @@ notepad .github\workflows\deploy.yml
     </item>
     
     <item>
-      <title>从零实现网站自动签到 &#43; 鸿蒙 PUSH 推送 </title>
-      <link>http://localhost:1313/posts/sign-push/</link>
-      <pubDate>Fri, 06 Jun 2025 23:00:00 +0800</pubDate>
-      
-      <guid>http://localhost:1313/posts/sign-push/</guid>
-      <description>完整实现网站自动签到流程，并通过鸿蒙 MeoW 实现每日签到结果推送。涵盖 Cookie 抓取、sign 参数解析、状态识别与推送机制。</description>
-      <content:encoded><![CDATA[<h1 id="从零实现网站自动签到--鸿蒙-push-推送">从零实现网站自动签到 + 鸿蒙 PUSH 推送</h1>
-<p>本文记录了我如何使用 Python 脚本，自动完成网站的每日签到操作，并将签到结果通过鸿蒙系统的 MeoW 应用推送至手机，真正实现“自动签到 + 即时提醒”的全自动流程。</p>
-<hr>
-<h2 id="1-项目目标">1. 项目目标</h2>
-<ul>
-<li>每天自动访问 网站签到页面</li>
-<li>自动提取网页动态参数 <code>sign</code></li>
-<li>发送模拟点击请求进行签到</li>
-<li>解析签到响应判断状态（成功、已签到、Cookie 失效等）</li>
-<li>使用鸿蒙 MeoW 提供的接口推送签到结果</li>
-<li>支持通过系统计划任务定时执行脚本</li>
-</ul>
-<hr>
-<h2 id="2-环境准备">2. 环境准备</h2>
-<h3 id="21-安装依赖库">2.1 安装依赖库</h3>
-<p>我们使用 <code>requests</code> 进行网页请求，<code>BeautifulSoup</code> 进行 HTML 解析，命令如下：</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">pip install requests beautifulsoup4
-</span></span></code></pre></div><hr>
-<h3 id="22-获取登录-cookie">2.2 获取登录 Cookie</h3>
-<p>访问网站并抓取 Cookie 值：</p>
-<ol>
-<li>打开浏览器登录网站，并勾选 “记住我”</li>
-<li>按下 <code>F12</code> → 进入开发者工具 → 切换到「Application」面板</li>
-<li>展开 Cookies → 找到域名 <code>https://www.网站.com</code></li>
-<li>提取以下两个字段：</li>
-</ol>
-<pre tabindex="0"><code>bbs_sid=xxxx; bbs_token=xxxx
-</code></pre><p>⚠️ 必须在登录状态下获取，否则 Cookie 会很快过期。</p>
-<hr>
-<h2 id="3--获取鸿蒙-push-接口">3.  获取鸿蒙 PUSH 接口</h2>
-<p>升级鸿蒙NEXT系统的手机，去应用市场安装 <strong>MeoW App</strong> 后可获得你的推送链接，格式如下：</p>
-<pre tabindex="0"><code>https://api.chuckfang.com/你的用户名/推送内容
-</code></pre><p>将推送内容拼接至接口末尾即可实现消息推送。</p>
-<hr>
-<h2 id="4-签到流程逻辑详解">4. 签到流程逻辑详解</h2>
-<ol>
-<li>
-<p>访问签到页 <code>https://www.网站.com/sg_sign.htm</code></p>
-</li>
-<li>
-<p>从 JS 中提取动态参数 <code>sign</code></p>
-</li>
-<li>
-<p>构造 POST 请求，附带 <code>sign</code> 参数发起签到</p>
-</li>
-<li>
-<p>判断响应文本内容：</p>
-<ul>
-<li>✅ 签到成功</li>
-<li>⚠️ 已签到</li>
-<li>❌ Cookie 失效</li>
-</ul>
-</li>
-<li>
-<p>发送推送通知至鸿蒙手机</p>
-</li>
-</ol>
-<hr>
-<h2 id="5-完整代码">5. 完整代码</h2>
-<p>保存为 <code>daily_auto_sign.py</code>：</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">requests</span>
-</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">bs4</span> <span class="kn">import</span> <span class="n">BeautifulSoup</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">re</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">datetime</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># === 配置区域 ===</span>
-</span></span><span class="line"><span class="cl"><span class="n">COOKIE</span> <span class="o">=</span> <span class="s2">&#34;bbs_sid=xxxx; bbs_token=xxxx&#34;</span>  <span class="c1"># 替换为你的 Cookie</span>
-</span></span><span class="line"><span class="cl"><span class="n">PUSH_API</span> <span class="o">=</span> <span class="s2">&#34;https://api.chuckfang.com/你的用户名&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">HEADERS</span> <span class="o">=</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;User-Agent&#34;</span><span class="p">:</span> <span class="s2">&#34;Mozilla/5.0 (Windows NT 10.0; Win64; x64)&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;Referer&#34;</span><span class="p">:</span> <span class="s2">&#34;https://www.网站.com/&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;Cookie&#34;</span><span class="p">:</span> <span class="n">COOKIE</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">send_push</span><span class="p">(</span><span class="n">content</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;推送消息到鸿蒙 MeoW&#34;&#34;&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">try</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="n">url</span> <span class="o">=</span> <span class="n">PUSH_API</span> <span class="o">+</span> <span class="n">content</span>
-</span></span><span class="line"><span class="cl">        <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;❌ 推送失败：&#34;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">get_sign_token</span><span class="p">(</span><span class="n">session</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;提取签到参数 sign&#34;&#34;&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">res</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&#34;https://www.网站.com/sg_sign.htm&#34;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">HEADERS</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">soup</span> <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="s2">&#34;html.parser&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="n">soup</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&#34;script&#34;</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">        <span class="k">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;sign\s*=\s*&#34;([^&#34;]+)&#34;&#39;</span><span class="p">,</span> <span class="n">script</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="k">match</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="k">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">None</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">do_sign</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">sign_token</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;发送签到 POST 请求&#34;&#34;&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&#34;sign&#34;</span><span class="p">:</span> <span class="n">sign_token</span><span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="n">res</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&#34;https://www.网站.com/sg_sign.htm&#34;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">HEADERS</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">text</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">sign_in</span><span class="p">():</span>
-</span></span><span class="line"><span class="cl">    <span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&#34;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="n">sign_token</span> <span class="o">=</span> <span class="n">get_sign_token</span><span class="p">(</span><span class="n">session</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">sign_token</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;[</span><span class="si">{</span><span class="n">now</span><span class="si">}</span><span class="s2">] ❌ 获取 sign 参数失败&#34;</span>
-</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="n">send_push</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="n">result</span> <span class="o">=</span> <span class="n">do_sign</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">sign_token</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="s2">&#34;签到成功&#34;</span> <span class="ow">in</span> <span class="n">result</span> <span class="ow">or</span> <span class="s2">&#34;恭喜获得&#34;</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;[</span><span class="si">{</span><span class="n">now</span><span class="si">}</span><span class="s2">] ✅ 签到成功&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">elif</span> <span class="s2">&#34;已经签到&#34;</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;[</span><span class="si">{</span><span class="n">now</span><span class="si">}</span><span class="s2">] ⚠️ 今天已签到&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">elif</span> <span class="s2">&#34;请先登录&#34;</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;[</span><span class="si">{</span><span class="n">now</span><span class="si">}</span><span class="s2">] ❌ Cookie 已失效&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">else</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;[</span><span class="si">{</span><span class="n">now</span><span class="si">}</span><span class="s2">] ❓ 未知返回&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">send_push</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&#34;__main__&#34;</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">    <span class="n">sign_in</span><span class="p">()</span>
-</span></span></code></pre></div><hr>
-<h2 id="6-设置定时任务windows">6. 设置定时任务（Windows）</h2>
-<ol>
-<li>创建 <code>run_sign.bat</code> 文件：</li>
-</ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bat" data-lang="bat"><span class="line"><span class="cl"><span class="k">PATH</span>\TO\YOUR\python.exe D:\你的路径\daily_auto_sign.py
-</span></span></code></pre></div><ol start="2">
-<li>打开「任务计划程序」：
-<ul>
-<li>创建基本任务</li>
-<li>触发器：每天 → 设置时间如早上 08:00</li>
-<li>操作：启动程序 → 「程序或脚本」中直接输入：cmd.exe → 「添加参数（可选）」中输入：<code>/c start &quot;&quot; &quot;\YOUR\PATH\run_sign.bat&quot;</code></li>
-</ul>
-</li>
-</ol>
-]]></content:encoded>
-    </item>
-    
-    <item>
-      <title>Word VBA 批处理：高效分离中英文翻译段落</title>
-      <link>http://localhost:1313/posts/vba-chinese-english-split/</link>
-      <pubDate>Thu, 17 Apr 2025 15:50:42 +0800</pubDate>
-      
-      <guid>http://localhost:1313/posts/vba-chinese-english-split/</guid>
-      <description>本文将介绍如何利用 Word VBA 批处理，将中英文交替排列的文档中的段落自动提取分离。</description>
-      <content:encoded><![CDATA[<h1 id="word-vba-批处理实战高效分离中英文翻译段落">Word VBA 批处理实战：高效分离中英文翻译段落</h1>
-<p>在翻译或双语教学材料的处理中，我们经常会遇到 <strong>中英文交替排列的文档</strong>，每段中文后紧跟一段对应英文。手动分离这些翻译段不仅效率低，还容易出错。本文将介绍一种 <strong>使用 Word VBA 实现中英文段落自动分离</strong> 的完整解决方案。</p>
-<h2 id="1-任务目标">1. 任务目标</h2>
-<p>任务的核心目标是 <strong>分离Word文档中的中文和英文翻译</strong>。文档中每一段包含一个翻译对，中文翻译和英文翻译交替出现。我们需要将文档中的所有中文翻译和英文翻译分别提取并整理到新文档中，实现：</p>
-<ul>
-<li><strong>连续的中文段落</strong></li>
-<li><strong>连续的英文段落</strong></li>
-</ul>
-<hr>
-<h2 id="2-文档特点与处理难点">2. 文档特点与处理难点</h2>
-<table>
-  <thead>
-      <tr>
-          <th>问题</th>
-          <th>描述</th>
-          <th>解决方案</th>
-      </tr>
-  </thead>
-  <tbody>
-      <tr>
-          <td>中英文交替段落</td>
-          <td>文档结构为「中文段 → 英文段 → 中文段 → 英文段」</td>
-          <td>使用正则和 Unicode 判断每段是中文还是英文</td>
-      </tr>
-      <tr>
-          <td>软回车符（Line Break）</td>
-          <td>表示段内换行，显示为 ↵，VBA 中为 <code>Chr(11)</code></td>
-          <td>统一替换为真正的段落符 <code>vbCrLf</code></td>
-      </tr>
-      <tr>
-          <td>制表符（Tab）</td>
-          <td>显示为黑色方块，干扰排版</td>
-          <td>替换为空字符串进行删除</td>
-      </tr>
-  </tbody>
-</table>
-<hr>
-<h2 id="3-问题与解决方案">3. 问题与解决方案</h2>
-<h3 id="问题-1中文和英文翻译的分离">问题 1：中文和英文翻译的分离</h3>
-<ul>
-<li><strong>问题描述</strong>：中文和英文翻译在文档中是交替的，但它们并没有明确的分隔标志，且每个段落都是一个翻译单元。需要遍历每个段落并根据其内容判断该段落是中文还是英文，然后将它们分离到不同的部分。</li>
-<li><strong>解决方案</strong>：
-<ul>
-<li>使用 <code>ContainsChinese</code> 函数来判断每个段落是否包含中文字符，通过遍历文档中的每个段落并根据语言类型分别存储中文和英文内容。</li>
-<li>在分离文本时，我们确保每段中文或英文之间没有多余的空行，通过逻辑判断避免在每个段落后添加额外的换行符。</li>
-</ul>
-</li>
-</ul>
-<h3 id="问题-2软回车符的处理">问题 2：软回车符的处理</h3>
-<ul>
-<li><strong>问题描述</strong>：文档中的软回车符（Line Break，通常显示为向下箭头符号）并不是一个有效的回车字符，而只是行间的分隔符。它们需要被替换为硬回车符（换行符），否则文档格式可能会混乱。</li>
-<li><strong>解决方案</strong>：
-<ul>
-<li>最初没有处理软回车符，导致文档中出现格式不一致的问题。通过查找并替换 <code>Chr(11)</code>（软回车符）为 <code>vbCrLf</code>（硬回车符），我们确保段落正确分隔，每个翻译对显示在新的行中。</li>
-<li>通过 <code>.Text = Chr(11)</code> 查找软回车符并使用 <code>.Replacement.Text = vbCrLf</code> 进行替换，确保段落的格式整洁。</li>
-</ul>
-</li>
-</ul>
-<h3 id="问题-3制表符的处理">问题 3：制表符的处理</h3>
-<ul>
-<li><strong>问题描述</strong>：文档中包含制表符（Tab符号），这些符号显示为黑色方块，影响文档的整洁性。制表符通常用于缩进，但它们不适合在最终文档中出现。</li>
-<li><strong>解决方案</strong>：
-<ul>
-<li>起初，没有处理制表符，导致文档中出现了难以去除的黑色方块。后来，我们通过查找并删除制表符（<code>Chr(9)</code>）来解决这个问题。为了不让其影响文档的视觉效果，我们将制表符替换为空字符串，从而删除它们。</li>
-</ul>
-</li>
-</ul>
-<h2 id="4-最终实现">4. 最终实现</h2>
-<h3 id="第一步统一格式软回车与制表符清理">第一步：统一格式（软回车与制表符清理）</h3>
-<ul>
-<li>将所有软回车 <code>Chr(11)</code> 替换为真正的段落符 <code>vbCrLf</code></li>
-<li>删除所有制表符 <code>Chr(9)</code></li>
-</ul>
-<h3 id="第二步判断每段语言类型">第二步：判断每段语言类型</h3>
-<ul>
-<li>遍历所有段落</li>
-<li>利用 <code>AscW()</code> 判断字符是否在中文 Unicode 范围（19968~40959）</li>
-</ul>
-<h3 id="第三步将中英文段落分类收集">第三步：将中英文段落分类收集</h3>
-<ul>
-<li>若段落中包含中文字符，则归为中文段落</li>
-<li>否则归为英文段落</li>
-</ul>
-<h3 id="第四步输出新文档">第四步：输出新文档</h3>
-<ul>
-<li>生成新 Word 文档</li>
-<li>插入整理后的中文与英文内容</li>
-<li>保存输出</li>
-</ul>
-<hr>
-<h2 id="5-vba-源代码">5. VBA 源代码</h2>
-<p>以下代码可直接复制到 Word 的 VBA 编辑器中使用：</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-vb" data-lang="vb"><span class="line"><span class="cl"><span class="k">Sub</span> <span class="nf">CleanUpAndSeparateText</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">doc</span> <span class="ow">As</span> <span class="n">Document</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Set</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">ActiveDocument</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">chineseText</span> <span class="ow">As</span> <span class="kt">String</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">englishText</span> <span class="ow">As</span> <span class="kt">String</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">para</span> <span class="ow">As</span> <span class="n">Paragraph</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">paraText</span> <span class="ow">As</span> <span class="kt">String</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 初始化变量
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="n">chineseText</span> <span class="o">=</span> <span class="s">&#34;&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">englishText</span> <span class="o">=</span> <span class="s">&#34;&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 查找并替换软回车（向下箭头）为硬回车
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">With</span> <span class="n">doc</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">Find</span>
-</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">ClearFormatting</span>
-</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">Text</span> <span class="o">=</span> <span class="n">Chr</span><span class="p">(</span><span class="n">11</span><span class="p">)</span> <span class="c">&#39; 软回车（Line Break）的ASCII码是 11
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="p">.</span><span class="n">Replacement</span><span class="p">.</span><span class="n">ClearFormatting</span>
-</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">Replacement</span><span class="p">.</span><span class="n">Text</span> <span class="o">=</span> <span class="n">vbCrLf</span> <span class="c">&#39; 替换为真正的回车符
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="p">.</span><span class="n">Execute</span> <span class="n">Replace</span><span class="p">:</span><span class="o">=</span><span class="n">wdReplaceAll</span>
-</span></span><span class="line"><span class="cl">    <span class="k">End</span> <span class="k">With</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 查找并删除制表符（Tab符号）
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">With</span> <span class="n">doc</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">Find</span>
-</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">ClearFormatting</span>
-</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">Text</span> <span class="o">=</span> <span class="n">Chr</span><span class="p">(</span><span class="n">9</span><span class="p">)</span> <span class="c">&#39; 制表符的ASCII码是 9
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="p">.</span><span class="n">Replacement</span><span class="p">.</span><span class="n">ClearFormatting</span>
-</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="n">Replacement</span><span class="p">.</span><span class="n">Text</span> <span class="o">=</span> <span class="s">&#34;&#34;</span> <span class="c">&#39; 用空字符串替换（删除制表符）
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="p">.</span><span class="n">Execute</span> <span class="n">Replace</span><span class="p">:</span><span class="o">=</span><span class="n">wdReplaceAll</span>
-</span></span><span class="line"><span class="cl">    <span class="k">End</span> <span class="k">With</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 遍历文档中的段落并进行中文和英文的分离
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">For</span> <span class="k">Each</span> <span class="n">para</span> <span class="ow">In</span> <span class="n">doc</span><span class="p">.</span><span class="n">Paragraphs</span>
-</span></span><span class="line"><span class="cl">        <span class="n">paraText</span> <span class="o">=</span> <span class="n">Trim</span><span class="p">(</span><span class="n">para</span><span class="p">.</span><span class="n">Range</span><span class="p">.</span><span class="n">Text</span><span class="p">)</span> <span class="c">&#39; 获取段落的文本
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>
-</span></span><span class="line"><span class="cl">        <span class="c">&#39; 判断段落是否包含内容
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="k">If</span> <span class="n">Len</span><span class="p">(</span><span class="n">paraText</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">0</span> <span class="k">Then</span>
-</span></span><span class="line"><span class="cl">            <span class="c">&#39; 判断段落是中文还是英文
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>            <span class="k">If</span> <span class="n">ContainsChinese</span><span class="p">(</span><span class="n">paraText</span><span class="p">)</span> <span class="k">Then</span>
-</span></span><span class="line"><span class="cl">                <span class="c">&#39; 删除每个中文段落末尾的多余换行
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>                <span class="k">If</span> <span class="n">Len</span><span class="p">(</span><span class="n">chineseText</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">0</span> <span class="k">Then</span>
-</span></span><span class="line"><span class="cl">                    <span class="n">chineseText</span> <span class="o">=</span> <span class="n">chineseText</span> <span class="o">&amp;</span> <span class="n">paraText</span>
-</span></span><span class="line"><span class="cl">                <span class="k">Else</span>
-</span></span><span class="line"><span class="cl">                    <span class="n">chineseText</span> <span class="o">=</span> <span class="n">paraText</span>
-</span></span><span class="line"><span class="cl">                <span class="k">End</span> <span class="k">If</span>
-</span></span><span class="line"><span class="cl">            <span class="k">Else</span>
-</span></span><span class="line"><span class="cl">                <span class="c">&#39; 如果不是中文，则归类为英文
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>                <span class="c">&#39; 删除每个英文段落末尾的多余换行
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>                <span class="k">If</span> <span class="n">Len</span><span class="p">(</span><span class="n">englishText</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">0</span> <span class="k">Then</span>
-</span></span><span class="line"><span class="cl">                    <span class="n">englishText</span> <span class="o">=</span> <span class="n">englishText</span> <span class="o">&amp;</span> <span class="n">paraText</span>
-</span></span><span class="line"><span class="cl">                <span class="k">Else</span>
-</span></span><span class="line"><span class="cl">                    <span class="n">englishText</span> <span class="o">=</span> <span class="n">paraText</span>
-</span></span><span class="line"><span class="cl">                <span class="k">End</span> <span class="k">If</span>
-</span></span><span class="line"><span class="cl">            <span class="k">End</span> <span class="k">If</span>
-</span></span><span class="line"><span class="cl">        <span class="k">End</span> <span class="k">If</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Next</span> <span class="n">para</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 创建新的文档并输出中文和英文
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">Dim</span> <span class="n">newDoc</span> <span class="ow">As</span> <span class="n">Document</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Set</span> <span class="n">newDoc</span> <span class="o">=</span> <span class="n">Documents</span><span class="p">.</span><span class="n">Add</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 插入中文和英文部分
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="n">newDoc</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">InsertAfter</span> <span class="s">&#34;中文翻译：&#34;</span> <span class="o">&amp;</span> <span class="n">vbCrLf</span> <span class="o">&amp;</span> <span class="n">chineseText</span> <span class="o">&amp;</span> <span class="n">vbCrLf</span>
-</span></span><span class="line"><span class="cl">    <span class="n">newDoc</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">InsertAfter</span> <span class="s">&#34;英文翻译：&#34;</span> <span class="o">&amp;</span> <span class="n">vbCrLf</span> <span class="o">&amp;</span> <span class="n">englishText</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 保存新文档
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="n">newDoc</span><span class="p">.</span><span class="n">SaveAs2</span> <span class="s">&#34;C:\Users\12509\Desktop\n1.docx&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">newDoc</span><span class="p">.</span><span class="n">Close</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="n">MsgBox</span> <span class="s">&#34;文本已清理并分离中文和英文翻译！&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="k">End</span> <span class="k">Sub</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c">&#39; 判断文本中是否包含中文字符
-</span></span></span><span class="line"><span class="cl"><span class="c"></span><span class="k">Function</span> <span class="nf">ContainsChinese</span><span class="p">(</span><span class="n">text</span> <span class="ow">As</span> <span class="kt">String</span><span class="p">)</span> <span class="ow">As</span> <span class="kt">Boolean</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">i</span> <span class="ow">As</span> <span class="kt">Integer</span>
-</span></span><span class="line"><span class="cl">    <span class="n">ContainsChinese</span> <span class="o">=</span> <span class="k">False</span>
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 遍历文本中的每个字符
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">For</span> <span class="n">i</span> <span class="o">=</span> <span class="n">1</span> <span class="k">To</span> <span class="n">Len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="c">&#39; 如果字符的Unicode值在中文范围内，返回True
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="k">If</span> <span class="p">(</span><span class="n">AscW</span><span class="p">(</span><span class="n">Mid</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">1</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="n">19968</span> <span class="ow">And</span> <span class="n">AscW</span><span class="p">(</span><span class="n">Mid</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">1</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="n">40959</span><span class="p">)</span> <span class="k">Then</span>
-</span></span><span class="line"><span class="cl">            <span class="n">ContainsChinese</span> <span class="o">=</span> <span class="k">True</span>
-</span></span><span class="line"><span class="cl">            <span class="k">Exit</span> <span class="k">Function</span>
-</span></span><span class="line"><span class="cl">        <span class="nf">End</span> <span class="k">If</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Next</span> <span class="n">i</span>
-</span></span><span class="line"><span class="cl"><span class="k">End</span> <span class="k">Function</span>
-</span></span></code></pre></div><blockquote>
-<p><strong>提示</strong>：请将保存路径 <code>C:\Users\YourUsername\Desktop\...</code> 替换为你自己的桌面路径。</p></blockquote>
-<hr>
-<h2 id="6-效果展示">6. 效果展示</h2>
-<table>
-  <thead>
-      <tr>
-          <th>原始内容（交替段落）</th>
-          <th>处理后输出</th>
-      </tr>
-  </thead>
-  <tbody>
-      <tr>
-          <td>段落1（中文）<!-- raw HTML omitted -->段落2（英文）<!-- raw HTML omitted -->段落3（中文）<!-- raw HTML omitted -->段落4（英文）</td>
-          <td>中文翻译：<!-- raw HTML omitted -->段落1<!-- raw HTML omitted -->段落3<!-- raw HTML omitted --><!-- raw HTML omitted -->英文翻译：<!-- raw HTML omitted -->段落2<!-- raw HTML omitted -->段落4</td>
-      </tr>
-  </tbody>
-</table>
-<hr>
-<h2 id="7-下载和使用方式">7. 下载和使用方式</h2>
-<ol>
-<li>打开 Word，按下 <code>Alt + F11</code> 打开 <strong>VBA 编辑器</strong></li>
-<li>插入模块（Insert &gt; Module）</li>
-<li>粘贴代码并保存</li>
-<li>回到 Word，运行宏 <code>CleanUpAndSeparateText</code></li>
-</ol>
-]]></content:encoded>
-    </item>
-    
-    <item>
-      <title>从 Excel 导入 Anki：批量制作卡片的完整指南</title>
-      <link>http://localhost:1313/posts/excel2anki/</link>
-      <pubDate>Sat, 15 Mar 2025 08:00:00 +0800</pubDate>
-      
-      <guid>http://localhost:1313/posts/excel2anki/</guid>
-      <description>一文教你如何从 Excel 批量导入选择题至 Anki，包含前缀添加、字段清理、CSV 导出与模板导入等详细步骤。</description>
-      <content:encoded><![CDATA[<h1 id="从-excel-导入-anki批量制作卡片的完整指南">从 Excel 导入 Anki：批量制作卡片的完整指南</h1>
-<p>使用 Anki 记忆工具时，很多人希望批量导入卡片，尤其是已有的 Excel 题库。本文将从 Excel 数据准备、字段清洗，到 Anki 模板配置、导入映射，手把手教你完成批量制卡。</p>
-<hr>
-<h2 id="1-excel-数据准备">1. Excel 数据准备</h2>
-<h3 id="1-1-字段规划以选择题为例">1. 1 字段规划（以选择题为例）</h3>
-<table>
-  <thead>
-      <tr>
-          <th>列号</th>
-          <th>内容说明</th>
-      </tr>
-  </thead>
-  <tbody>
-      <tr>
-          <td>B</td>
-          <td>问题</td>
-      </tr>
-      <tr>
-          <td>C~F</td>
-          <td>选项 A/B/C/D</td>
-      </tr>
-      <tr>
-          <td>G</td>
-          <td>正确答案</td>
-      </tr>
-      <tr>
-          <td>H</td>
-          <td>解析（可选）</td>
-      </tr>
-  </tbody>
-</table>
-<p>建议每列对应 Anki 中的一个字段，方便后续映射。</p>
-<hr>
-<h3 id="12-批量添加选项前缀">1.2 批量添加选项前缀</h3>
-<p>为指定列 <code>C/D/E/F</code> 的文本内容自动添加字母前缀  <code>A./B./C./D.</code>，提高排版一致性。使用如下 VBA 宏：</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-vb" data-lang="vb"><span class="line"><span class="cl"><span class="n">Attribute</span> <span class="n">VB_Name</span> <span class="o">=</span> <span class="s">&#34;AddAlphaHeader&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="k">Sub</span> <span class="nf">AddCorrectPrefixes</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">ws</span> <span class="ow">As</span> <span class="n">Worksheet</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">lastRow</span> <span class="ow">As</span> <span class="kt">Long</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">i</span> <span class="ow">As</span> <span class="kt">Long</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 定义工作表
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">Set</span> <span class="n">ws</span> <span class="o">=</span> <span class="n">ThisWorkbook</span><span class="p">.</span><span class="n">Sheets</span><span class="p">(</span><span class="s">&#34;Sheet1&#34;</span><span class="p">)</span> <span class="c">&#39; 请根据你的实际表名修改 &#34;Sheet1&#34;
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 找到最后一行
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="n">lastRow</span> <span class="o">=</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">ws</span><span class="p">.</span><span class="n">Rows</span><span class="p">.</span><span class="n">Count</span><span class="p">,</span> <span class="s">&#34;B&#34;</span><span class="p">).</span><span class="n">End</span><span class="p">(</span><span class="n">xlUp</span><span class="p">).</span><span class="n">Row</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 遍历每一行，为 C、D、E、F 列添加前缀
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">For</span> <span class="n">i</span> <span class="o">=</span> <span class="n">5</span> <span class="k">To</span> <span class="n">lastRow</span> <span class="c">&#39; 假设从第5行开始，需根据实际情况修改
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>        <span class="k">If</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;C&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">&lt;&gt;</span> <span class="s">&#34;&#34;</span> <span class="k">Then</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;C&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">=</span> <span class="s">&#34;A. &#34;</span> <span class="o">&amp;</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;C&#34;</span><span class="p">).</span><span class="n">Value</span>
-</span></span><span class="line"><span class="cl">        <span class="k">If</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;D&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">&lt;&gt;</span> <span class="s">&#34;&#34;</span> <span class="k">Then</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;D&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">=</span> <span class="s">&#34;B. &#34;</span> <span class="o">&amp;</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;D&#34;</span><span class="p">).</span><span class="n">Value</span>
-</span></span><span class="line"><span class="cl">        <span class="k">If</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;E&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">&lt;&gt;</span> <span class="s">&#34;&#34;</span> <span class="k">Then</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;E&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">=</span> <span class="s">&#34;C. &#34;</span> <span class="o">&amp;</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;E&#34;</span><span class="p">).</span><span class="n">Value</span>
-</span></span><span class="line"><span class="cl">        <span class="k">If</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;F&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">&lt;&gt;</span> <span class="s">&#34;&#34;</span> <span class="k">Then</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;F&#34;</span><span class="p">).</span><span class="n">Value</span> <span class="o">=</span> <span class="s">&#34;D. &#34;</span> <span class="o">&amp;</span> <span class="n">ws</span><span class="p">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#34;F&#34;</span><span class="p">).</span><span class="n">Value</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Next</span> <span class="n">i</span>
-</span></span><span class="line"><span class="cl"><span class="k">End</span> <span class="k">Sub</span>
-</span></span></code></pre></div><p><strong>提示</strong>：根据实际的 Excel 文件，适当修改宏中“工作表名称”和循环起始行。</p>
-<hr>
-<h3 id="13-清理无效字符">1.3 清理无效字符</h3>
-<p>有些题干或选项前会有中文标点或空格，可以使用如下宏清除开头杂字符：</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-vb" data-lang="vb"><span class="line"><span class="cl"><span class="n">Attribute</span> <span class="n">VB_Name</span> <span class="o">=</span> <span class="s">&#34;SanitizeLead&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="k">Function</span> <span class="nf">CleanText</span><span class="p">(</span><span class="n">cell</span> <span class="ow">As</span> <span class="n">Range</span><span class="p">)</span> <span class="ow">As</span> <span class="kt">String</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">str</span> <span class="ow">As</span> <span class="kt">String</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">i</span> <span class="ow">As</span> <span class="kt">Integer</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Dim</span> <span class="n">symbols</span> <span class="ow">As</span> <span class="kt">String</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 需要删除的符号
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="n">symbols</span> <span class="o">=</span> <span class="s">&#34;、，。．.&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="n">str</span> <span class="o">=</span> <span class="n">cell</span><span class="p">.</span><span class="n">Value</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&#39; 删除开头的空格和指定符号
-</span></span></span><span class="line"><span class="cl"><span class="c"></span>    <span class="k">Do</span> <span class="k">While</span> <span class="n">Len</span><span class="p">(</span><span class="n">str</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">0</span> <span class="ow">And</span> <span class="p">(</span><span class="n">Left</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">1</span><span class="p">)</span> <span class="o">=</span> <span class="s">&#34; &#34;</span> <span class="ow">Or</span> <span class="n">Left</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">1</span><span class="p">)</span> <span class="o">=</span> <span class="n">ChrW</span><span class="p">(</span><span class="n">12288</span><span class="p">)</span> <span class="ow">Or</span> <span class="n">InStr</span><span class="p">(</span><span class="n">symbols</span><span class="p">,</span> <span class="n">Left</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">1</span><span class="p">))</span> <span class="o">&gt;</span> <span class="n">0</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="n">str</span> <span class="o">=</span> <span class="n">Mid</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">2</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">Loop</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    <span class="n">CleanText</span> <span class="o">=</span> <span class="n">str</span>
-</span></span><span class="line"><span class="cl"><span class="k">End</span> <span class="k">Function</span>
-</span></span></code></pre></div><hr>
-<h2 id="2-导出为-csvutf-8">2. 导出为 CSV（UTF-8）</h2>
-<ol>
-<li>Excel 顶部菜单 → <code>文件 &gt; 另存为</code></li>
-<li>格式选择：<code>CSV UTF-8（逗号分隔）</code></li>
-<li>文件名建议为英文，如 <code>anki_cards.csv</code></li>
-</ol>
-<hr>
-<h2 id="3-anki-设置与导入">3. Anki 设置与导入</h2>
-<h3 id="31-创建新的-note-type笔记类型">3.1 创建新的 Note Type（笔记类型）</h3>
-<ul>
-<li>打开 Anki → <code>Tools &gt; Manage Note Types</code></li>
-<li><code>Add</code> 创建或克隆一个新的类型（如“多选题”）</li>
-<li><code>Fields</code>：添加与 Excel 对应的字段（如 问题、A、B、C、D、正确答案、解析）</li>
-<li><code>Cards</code>：编辑前/背面模板，例如：</li>
-</ul>
-<p><strong>Front Template</strong></p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    问题：{{问题}}<span class="p">&lt;</span><span class="nt">br</span><span class="p">&gt;&lt;</span><span class="nt">br</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    {{A}}<span class="p">&lt;</span><span class="nt">br</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    {{B}}<span class="p">&lt;</span><span class="nt">br</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    {{C}}<span class="p">&lt;</span><span class="nt">br</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    {{D}}
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
-</span></span></code></pre></div><p><strong>Back Template</strong></p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl">{{FrontSide}}
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">hr</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">正确答案：{{正确答案}}<span class="p">&lt;</span><span class="nt">br</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">解析：{{解析}}
-</span></span></code></pre></div><hr>
-<h3 id="32-导入-csv-文件">3.2 导入 CSV 文件</h3>
-<ol>
-<li>打开 Anki → <code>File &gt; Import</code> 选择 <code>.csv</code> 文件，编码确认为 UTF-8</li>
-<li><code>Type</code>：选“多选题”或对应的 Note Type</li>
-<li><code>Deck</code>：选择牌组</li>
-<li><code>Delimiter</code>：选择逗号（CSV）</li>
-<li>设置字段映射：
-<ul>
-<li>B → 问题</li>
-<li>C → A</li>
-<li>D → B</li>
-<li>E → C</li>
-<li>F → D</li>
-<li>G → 正确答案</li>
-<li>H（可选）→ 解析</li>
-</ul>
-</li>
-<li>完成导入后点击 “Import”</li>
-</ol>
-<hr>
-<h2 id="4-预览与检查">4. 预览与检查</h2>
-<ul>
-<li>点击 Browse，选择你刚导入的牌组</li>
-<li>确认每个字段对应正确</li>
-<li>使用卡片预览检查格式是否清晰</li>
-</ul>
-<hr>
-<h2 id="tips--常见问题">Tips &amp; 常见问题</h2>
-<ul>
-<li>若乱码，确认保存时编码为 UTF-8</li>
-<li>多余空行会导入空卡片，导入前请清理数据</li>
-<li>选项顺序建议保持一致，否则模板显示混乱</li>
-<li>若多个字段需要清洗，可在 Excel 中先使用 VBA 批处理</li>
-</ul>
-]]></content:encoded>
-    </item>
-    
-    <item>
       <title>解决训练中 PermissionError 报错：Ubuntu /tmp 缓存空间占满引发的多进程失败</title>
       <link>http://localhost:1313/posts/permissionerror/</link>
       <pubDate>Thu, 24 Oct 2024 08:00:00 +0800</pubDate>
       
       <guid>http://localhost:1313/posts/permissionerror/</guid>
       <description>一次通过 SSH 远程连接 Ubuntu 服务器训练模型时遇到的 PermissionError 报错，追踪发现是 /tmp 缓存目录空间占满导致多进程通信失败。详细记录诊断和解决过程。</description>
-      <content:encoded><![CDATA[<h1 id="解决训练中-permissionerror-报错ubuntu-tmp-缓存占满引发的多进程失败">解决训练中 PermissionError 报错：Ubuntu <code>/tmp</code> 缓存占满引发的多进程失败</h1>
-<p>近期在通过 SSH 远程连接 Ubuntu 服务器运行深度学习训练脚本时，遇到了如下报错：</p>
+      <content:encoded><![CDATA[<p>近期在通过 SSH 远程连接 Ubuntu 服务器运行深度学习训练脚本时，遇到了如下报错：</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">PermissionError: [Errno 13] Permission denied
 </span></span><span class="line"><span class="cl">...
 </span></span><span class="line"><span class="cl">self._listener = Listener(authkey=process.current_process().authkey)
@@ -918,14 +903,13 @@ notepad .github\workflows\deploy.yml
     </item>
     
     <item>
-      <title>Typora 使用技巧：PicGo 图床配置、代码块默认语言、快捷键自定义等</title>
+      <title>Typora 使用技巧</title>
       <link>http://localhost:1313/posts/typora-skill/</link>
       <pubDate>Sat, 14 Oct 2023 08:00:00 +0800</pubDate>
       
       <guid>http://localhost:1313/posts/typora-skill/</guid>
       <description>本篇笔记整理了 Typora 使用过程中的常用技巧，包括如何配置 PicGo + Gitee 图床、更改默认代码语言、自定义快捷键，以及实现图片居中显示等，适用于提高 Markdown 写作效率的用户。</description>
-      <content:encoded><![CDATA[<h1 id="typora-使用技巧汇总">Typora 使用技巧汇总</h1>
-<p>本文总结了日常使用 Typora 中涉及的几个实用技巧，包括：</p>
+      <content:encoded><![CDATA[<p>本文总结了日常使用 Typora 中涉及的几个实用技巧，包括：</p>
 <ul>
 <li>配置 PicGo + Gitee 实现图床自动上传</li>
 <li>修改默认代码块语言</li>
